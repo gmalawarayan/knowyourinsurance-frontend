@@ -1,10 +1,16 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X } from "lucide-react";
+import { Send, Paperclip, X, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Message {
   id: string;
@@ -66,6 +72,7 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +80,23 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  
+  // Listen for new-chat event
+  useEffect(() => {
+    const handleNewChat = () => {
+      setMessages([]);
+      setMessage("");
+      setSelectedFile(null);
+      setIsTyping(false);
+      setIsAnalyzing(false);
+    };
+    
+    window.addEventListener('new-chat', handleNewChat);
+    
+    return () => {
+      window.removeEventListener('new-chat', handleNewChat);
+    };
+  }, []);
 
   // Simulate AI response
   const simulateAIResponse = (userMessage: string) => {
@@ -155,6 +179,21 @@ const ChatInterface: React.FC = () => {
     } catch (err) {
       toast.error("Failed to paste text. Please paste manually.");
     }
+  };
+  
+  const handleAnalyze = () => {
+    if (!message.trim() && !selectedFile) {
+      toast.error("Please provide text or upload a file to analyze");
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    
+    // Simulate analysis process
+    setTimeout(() => {
+      toast.success("Analysis complete!");
+      setIsAnalyzing(false);
+    }, 2000);
   };
 
   return (
@@ -271,6 +310,28 @@ const ChatInterface: React.FC = () => {
             <Button type="submit" size="icon" className="h-12 w-12">
               <Send className="h-5 w-5" />
             </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    className="h-12 w-12 bg-purple-500 hover:bg-purple-600 text-white"
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <BarChart2 className="h-5 w-5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Analyze your input</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           
           <div className="flex justify-end mt-2">
