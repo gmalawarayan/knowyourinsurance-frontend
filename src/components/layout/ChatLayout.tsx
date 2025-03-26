@@ -30,7 +30,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
+        className="fixed top-4 left-4 z-50 md:hidden shadow-sm bg-background/50 backdrop-blur-sm hover:bg-background/80"
         onClick={toggleSidebar}
         aria-label="Toggle Menu"
       >
@@ -40,7 +40,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300 ease-in-out"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -48,19 +48,25 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-[20%] min-w-64 bg-[#F5F5F5] border-r border-border transition-transform duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-40 w-[20%] min-w-64 bg-[#F5F5F5] border-r border-border transition-transform duration-300 ease-in-out shadow-md",
           "md:translate-x-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full p-4">
           <div className="flex flex-col gap-3">
-            <Button className="w-full justify-start gap-2 bg-primary hover:bg-primary/90" onClick={handleNewChat}>
+            <Button 
+              className="w-full justify-start gap-2 bg-primary hover:bg-primary/90 shadow-sm scale-up-button" 
+              onClick={handleNewChat}
+            >
               <Plus size={18} />
               <span>New Chat</span>
             </Button>
             
-            <Button variant="outline" className="w-full justify-start gap-2 border-gray-300">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+            >
               <UserCircle2 size={18} />
               <span>Sign In</span>
             </Button>
@@ -68,7 +74,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           
           <Separator className="my-4" />
           
-          <div className="flex-grow mt-2">
+          <div className="flex-grow mt-2 overflow-y-auto">
             {/* Chat history or other sidebar content can go here */}
           </div>
         </div>
