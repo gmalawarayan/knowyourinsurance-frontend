@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X, BarChart2 } from "lucide-react";
+import { Send, Paperclip, X, BarChart2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { uploadPdfToChatPDF, sendMessageToChatPDF, deletePdfSource } from "@/services/chatPdfService";
 
 interface Message {
   id: string;
@@ -28,6 +29,11 @@ interface Message {
 interface FilePreviewProps {
   file: File;
   onRemove: () => void;
+}
+
+interface ChatPDFSource {
+  sourceId: string;
+  fileName: string;
 }
 
 const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
@@ -73,6 +79,8 @@ const ChatInterface: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activePdfSource, setActivePdfSource] = useState<ChatPDFSource | null>(null);
+  const [isPdfMode, setIsPdfMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,21 +92,100 @@ const ChatInterface: React.FC = () => {
   // Listen for new-chat event
   useEffect(() => {
     const handleNewChat = () => {
+      // Clean up any active PDF source
+      if (activePdfSource) {
+        deletePdfSource(activePdfSource.sourceId)
+          .then(() => console.log("PDF source deleted"))
+          .catch((error) => console.error("Failed to delete PDF source:", error));
+      }
+      
       setMessages([]);
       setMessage("");
       setSelectedFile(null);
       setIsTyping(false);
       setIsAnalyzing(false);
+      setActivePdfSource(null);
+      setIsPdfMode(false);
     };
     
     window.addEventListener('new-chat', handleNewChat);
     
     return () => {
       window.removeEventListener('new-chat', handleNewChat);
+      
+      // Clean up PDF source when component unmounts
+      if (activePdfSource) {
+        deletePdfSource(activePdfSource.sourceId)
+          .catch((error) => console.error("Failed to delete PDF source:", error));
+      }
     };
-  }, []);
+  }, [activePdfSource]);
 
-  // Simulate AI response
+  // Process PDF file
+  const processPdfFile = async (file: File, userQuery: string) => {
+    setIsAnalyzing(true);
+    
+    try {
+      // Upload the PDF to ChatPDF API
+      const source = await uploadPdfToChatPDF(file);
+      
+      if (!source) {
+        toast.error("Failed to upload PDF. Please try again.");
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      setActivePdfSource(source);
+      setIsPdfMode(true);
+      
+      // Add a message indicating PDF processing
+      const systemMessage: Message = {
+        id: Date.now().toString() + "-system",
+        content: `PDF "${file.name}" uploaded successfully. You can now ask questions about this document.`,
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, systemMessage]);
+      
+      // If there's a query, process it immediately
+      if (userQuery.trim()) {
+        processMessageWithChatPDF(source.sourceId, userQuery);
+      } else {
+        setIsAnalyzing(false);
+      }
+    } catch (error) {
+      console.error("Error processing PDF:", error);
+      toast.error("Failed to process PDF. Please try again.");
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Process message with ChatPDF
+  const processMessageWithChatPDF = async (sourceId: string, userMessage: string) => {
+    setIsTyping(true);
+    
+    try {
+      const response = await sendMessageToChatPDF(sourceId, userMessage);
+      
+      const aiResponse: Message = {
+        id: Date.now().toString(),
+        content: response,
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error("Error getting response from ChatPDF:", error);
+      toast.error("Failed to get response. Please try again.");
+    } finally {
+      setIsTyping(false);
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Simulate AI response for non-PDF queries
   const simulateAIResponse = (userMessage: string) => {
     setIsTyping(true);
     
@@ -107,7 +194,7 @@ const ChatInterface: React.FC = () => {
       const aiResponse: Message = {
         id: Date.now().toString(),
         content: `I received your message: "${userMessage}"${
-          selectedFile ? ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}` : ""
+          selectedFile && !isPdfMode ? ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}` : ""
         }`,
         sender: "ai",
         timestamp: new Date(),
@@ -142,7 +229,16 @@ const ChatInterface: React.FC = () => {
     };
     
     setMessages(prevMessages => [...prevMessages, userMessage]);
-    simulateAIResponse(message);
+    
+    // Handle PDF mode vs regular chat mode
+    if (isPdfMode && activePdfSource) {
+      processMessageWithChatPDF(activePdfSource.sourceId, message);
+    } else if (selectedFile && selectedFile.type === "application/pdf") {
+      processPdfFile(selectedFile, message);
+    } else {
+      simulateAIResponse(message);
+    }
+    
     setMessage("");
     setSelectedFile(null);
   };
@@ -151,9 +247,9 @@ const ChatInterface: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 25 * 1024 * 1024; // 25MB (ChatPDF limit)
     if (file.size > maxSize) {
-      toast.error("File is too large. Maximum size is 5MB.");
+      toast.error("File is too large. Maximum size is 25MB.");
       return;
     }
     
@@ -164,6 +260,11 @@ const ChatInterface: React.FC = () => {
     }
     
     setSelectedFile(file);
+    
+    // If PDF is selected, show a toast notification
+    if (file.type === "application/pdf") {
+      toast.info("PDF detected! Click Analyze to process with ChatPDF or Send to upload as attachment.");
+    }
   };
 
   const triggerFileUpload = () => {
@@ -182,18 +283,33 @@ const ChatInterface: React.FC = () => {
   };
   
   const handleAnalyze = () => {
-    if (!message.trim() && !selectedFile) {
-      toast.error("Please provide text or upload a file to analyze");
+    if (!selectedFile) {
+      toast.error("Please upload a PDF file to analyze");
+      return;
+    }
+    
+    if (selectedFile.type !== "application/pdf") {
+      toast.error("Only PDF files can be analyzed with ChatPDF");
       return;
     }
     
     setIsAnalyzing(true);
     
-    // Simulate analysis process
-    setTimeout(() => {
-      toast.success("Analysis complete!");
-      setIsAnalyzing(false);
-    }, 2000);
+    // Process the PDF file
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: "I'd like to analyze this PDF.",
+      sender: "user",
+      timestamp: new Date(),
+      attachment: {
+        type: "pdf",
+        name: selectedFile.name,
+        url: URL.createObjectURL(selectedFile),
+      },
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    processPdfFile(selectedFile, "");
   };
 
   return (
@@ -203,10 +319,21 @@ const ChatInterface: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center py-12 animate-fade-in">
-              <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to the Chat</h1>
-              <p className="text-muted-foreground">
-                Start typing or upload a file to begin...
+              <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to ChatPDF</h1>
+              <p className="text-muted-foreground mb-6">
+                Upload a PDF document and ask questions about it.
               </p>
+              <div className="max-w-md mx-auto bg-muted p-6 rounded-xl shadow-sm">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileText className="h-6 w-6 text-primary" />
+                  <span className="font-medium">How to use:</span>
+                </div>
+                <ol className="list-decimal pl-6 space-y-2 text-sm text-left text-muted-foreground">
+                  <li>Click the paperclip icon to upload a PDF document</li>
+                  <li>Click the purple "Analyze" button to process the PDF</li>
+                  <li>Ask questions about the document in the chat</li>
+                </ol>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -238,6 +365,7 @@ const ChatInterface: React.FC = () => {
                     
                     {msg.attachment && msg.attachment.type === "pdf" && (
                       <div className="mt-2 p-2 bg-background/50 rounded-lg flex items-center gap-2 text-xs border border-border/30 animate-fade-in">
+                        <FileText className="h-3 w-3" />
                         <span>PDF: {msg.attachment.name}</span>
                       </div>
                     )}
@@ -275,12 +403,21 @@ const ChatInterface: React.FC = () => {
             />
           )}
           
+          {isPdfMode && activePdfSource && (
+            <div className="flex items-center gap-2 p-2 bg-purple-100 rounded-md mt-2 mb-2 animate-fade-in text-sm">
+              <FileText className="h-4 w-4 text-purple-600" />
+              <span className="text-purple-800 font-medium">
+                ChatPDF active: {activePdfSource.fileName}
+              </span>
+            </div>
+          )}
+          
           <div className="flex gap-2 mt-2">
             <div className="flex-1 relative">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your message here..."
+                placeholder={isPdfMode ? "Ask a question about your PDF..." : "Type your message here..."}
                 className="min-h-12 resize-none pr-10 shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-shadow duration-200"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -325,19 +462,19 @@ const ChatInterface: React.FC = () => {
                     size="icon" 
                     className="h-12 w-12 bg-purple-500 hover:bg-purple-600 text-white shadow-md scale-up-button"
                     onClick={handleAnalyze}
-                    disabled={isAnalyzing}
-                    aria-label="Analyze input"
+                    disabled={isAnalyzing || !selectedFile || selectedFile.type !== "application/pdf"}
+                    aria-label="Analyze PDF"
                   >
                     {isAnalyzing ? (
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
                       <BarChart2 className="h-5 w-5" />
                     )}
-                    <span className="sr-only">Analyze</span>
+                    <span className="sr-only">Analyze PDF</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Analyze your input</p>
+                  <p>Analyze your PDF</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
