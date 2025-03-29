@@ -8,6 +8,7 @@ import { signInWithGoogle, signOut, getCurrentUser, isAuthenticated } from "@/se
 import { trackUniqueUser, isAdmin } from "@/services/analyticsService";
 import { toast } from "sonner";
 import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
+import { useNavigate } from "react-router-dom";
 
 interface ChatLayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
+  const navigate = useNavigate();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -56,11 +58,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   };
 
   const handleViewMetrics = () => {
-    if (!isAdmin(user)) {
-      toast.error("You don't have permission to view analytics");
-      return;
-    }
     setMetricsOpen(true);
+  };
+  
+  const goToAdminDashboard = () => {
+    navigate("/admin");
   };
 
   // Check if user is admin
@@ -155,16 +157,26 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </>
             )}
             
-            {/* Only show analytics button to admins */}
+            {/* Only show analytics options to admins */}
             {userIsAdmin && (
-              <Button 
-                variant="outline" 
-                className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-                onClick={handleViewMetrics}
-              >
-                <BarChart2 size={18} />
-                <span>Usage Analytics</span>
-              </Button>
+              <>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                  onClick={handleViewMetrics}
+                >
+                  <BarChart2 size={18} />
+                  <span>Quick Analytics</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                  onClick={goToAdminDashboard}
+                >
+                  <BarChart2 size={18} />
+                  <span>Admin Dashboard</span>
+                </Button>
+              </>
             )}
           </div>
           

@@ -63,13 +63,22 @@ export const trackUniqueUser = (userId: string) => {
   return metrics;
 };
 
+// Get list of unique user IDs
+export const getUniqueUserIds = (): string[] => {
+  const uniqueUsersKey = 'chatpdf-unique-users';
+  return JSON.parse(localStorage.getItem(uniqueUsersKey) || '[]');
+};
+
 // Check if user is admin (for analytics access)
 export const isAdmin = (user: { id: string; email: string } | null): boolean => {
   if (!user) return false;
   
-  // This is a simple check. In a real app, you'd have a more robust admin check
-  // For example, checking against a list of admin emails or admin role in user profile
-  const adminEmails = ['admin@example.com'];
+  // Updated admin emails list
+  const adminEmails = [
+    'admin@example.com', 
+    'your.email@example.com', 
+    'admin@chatpdf.com'
+  ];
   return adminEmails.includes(user.email);
 };
 
@@ -84,4 +93,30 @@ export const resetMetrics = () => {
   localStorage.setItem('chatpdf-metrics', JSON.stringify(emptyMetrics));
   localStorage.removeItem('chatpdf-unique-users');
   return emptyMetrics;
+};
+
+// Export analytics data to CSV
+export const exportAnalyticsToCSV = (): string => {
+  const metrics = getUsageMetrics();
+  const userIds = getUniqueUserIds();
+  
+  // Create CSV content
+  let csvContent = "data:text/csv;charset=utf-8,";
+  
+  // Add metrics data
+  csvContent += "Metric,Value\n";
+  csvContent += `Total PDFs Uploaded,${metrics.totalPdfsUploaded}\n`;
+  csvContent += `Total Queries Asked,${metrics.totalQueriesAsked}\n`;
+  csvContent += `Unique Users,${metrics.uniqueUsers}\n`;
+  csvContent += `Last Used Date,${metrics.lastUsed.toISOString()}\n\n`;
+  
+  // Add user IDs if available
+  if (userIds.length > 0) {
+    csvContent += "User IDs\n";
+    userIds.forEach(id => {
+      csvContent += `${id}\n`;
+    });
+  }
+  
+  return csvContent;
 };

@@ -1,0 +1,266 @@
+
+import React, { useState } from "react";
+import { 
+  getUsageMetrics, 
+  resetMetrics, 
+  exportAnalyticsToCSV, 
+  isAdmin 
+} from "@/services/analyticsService";
+import { getCurrentUser } from "@/services/authService";
+import { 
+  BarChart2, 
+  File, 
+  MessageSquare, 
+  Users, 
+  Download, 
+  RefreshCw, 
+  AlertTriangle 
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import ChatLayout from "@/components/layout/ChatLayout";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const AdminDashboard = () => {
+  const [metrics, setMetrics] = useState(getUsageMetrics());
+  const currentUser = getCurrentUser();
+  const userIsAdmin = isAdmin(currentUser);
+  
+  const handleResetMetrics = () => {
+    if (window.confirm("Are you sure you want to reset all analytics data? This cannot be undone.")) {
+      const newMetrics = resetMetrics();
+      setMetrics(newMetrics);
+      toast.success("Analytics data has been reset successfully");
+    }
+  };
+  
+  const handleExportCSV = () => {
+    const csvContent = exportAnalyticsToCSV();
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `chatpdf-analytics-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Analytics data exported successfully");
+  };
+
+  if (!userIsAdmin) {
+    return (
+      <ChatLayout>
+        <div className="flex items-center justify-center h-screen">
+          <Card className="w-[350px]">
+            <CardHeader>
+              <div className="flex justify-center mb-4">
+                <AlertTriangle className="h-12 w-12 text-amber-500" />
+              </div>
+              <CardTitle className="text-center">Access Restricted</CardTitle>
+              <CardDescription className="text-center">
+                You don't have permission to view the admin dashboard.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex justify-center">
+              <Button variant="outline" onClick={() => window.location.href = '/'}>
+                Return to Home
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </ChatLayout>
+    );
+  }
+  
+  // Calculate percentage change (just for demonstration, mocking growth)
+  const getRandomPercentage = () => {
+    return (Math.random() * 30 + 5).toFixed(1);
+  };
+  
+  return (
+    <ChatLayout>
+      <div className="container px-4 py-8 mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Analytics and management for ChatPDF service
+            </p>
+          </div>
+          
+          <div className="flex gap-2">
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button onClick={handleExportCSV} variant="outline" className="flex gap-2">
+                  <Download className="h-4 w-4" />
+                  <span>Export CSV</span>
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent>
+                Export all analytics data to a CSV file for offline analysis
+              </HoverCardContent>
+            </HoverCard>
+            
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button onClick={handleResetMetrics} variant="outline" className="flex gap-2" aria-label="Reset metrics">
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Reset Data</span>
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent>
+                Reset all analytics data. This action cannot be undone.
+              </HoverCardContent>
+            </HoverCard>
+          </div>
+        </div>
+        
+        {/* Dashboard cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total PDFs Uploaded
+              </CardTitle>
+              <File className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.totalPdfsUploaded}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                +{getRandomPercentage()}% from last month
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Queries Asked
+              </CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.totalQueriesAsked}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                +{getRandomPercentage()}% from last month
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Unique Users
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.uniqueUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                +{getRandomPercentage()}% from last month
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Last Activity
+              </CardTitle>
+              <BarChart2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-medium">
+                {new Date(metrics.lastUsed).toLocaleDateString()}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date(metrics.lastUsed).toLocaleTimeString()}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Analytics Table */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Analytics Overview</CardTitle>
+            <CardDescription>Detailed breakdown of system usage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Metric</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">PDFs Uploaded</TableCell>
+                  <TableCell>{metrics.totalPdfsUploaded}</TableCell>
+                  <TableCell>Total number of documents uploaded to the system</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Queries Asked</TableCell>
+                  <TableCell>{metrics.totalQueriesAsked}</TableCell>
+                  <TableCell>Total number of questions asked about documents</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Unique Users</TableCell>
+                  <TableCell>{metrics.uniqueUsers}</TableCell>
+                  <TableCell>Number of unique users who have used the system</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Queries Per PDF</TableCell>
+                  <TableCell>
+                    {metrics.totalPdfsUploaded === 0 
+                      ? '0' 
+                      : (metrics.totalQueriesAsked / metrics.totalPdfsUploaded).toFixed(2)}
+                  </TableCell>
+                  <TableCell>Average number of questions asked per document</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Queries Per User</TableCell>
+                  <TableCell>
+                    {metrics.uniqueUsers === 0 
+                      ? '0' 
+                      : (metrics.totalQueriesAsked / metrics.uniqueUsers).toFixed(2)}
+                  </TableCell>
+                  <TableCell>Average number of questions asked per user</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Last Activity</TableCell>
+                  <TableCell>
+                    {new Date(metrics.lastUsed).toLocaleDateString() + ' ' + 
+                     new Date(metrics.lastUsed).toLocaleTimeString()}
+                  </TableCell>
+                  <TableCell>Last time the system was used</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        
+        <div className="text-sm text-center text-muted-foreground">
+          <p>Analytics data is stored locally in your browser.</p>
+          <p>For production use, consider implementing server-side analytics storage.</p>
+        </div>
+      </div>
+    </ChatLayout>
+  );
+};
+
+export default AdminDashboard;
