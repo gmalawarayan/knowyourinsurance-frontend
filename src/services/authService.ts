@@ -22,20 +22,18 @@ const initAuthFromStorage = () => {
 // Call initialization when the module is first imported
 initAuthFromStorage();
 
-// Sign in with Google (mock implementation)
-export const signInWithGoogle = async (): Promise<User> => {
+// Sign in with email (simple implementation)
+export const signIn = async (): Promise<User> => {
   try {
-    // This is a mock implementation - in a real app, you would use Firebase Auth, Auth0, or similar
-    
     // Simulate auth delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Create a mock user with a random ID
     const user: User = {
       id: `user-${Math.random().toString(36).substring(2, 15)}`,
-      name: "Google User",
+      name: "User",
       email: "user@example.com",
-      profilePicture: "https://ui-avatars.com/api/?name=Google+User&background=random",
+      profilePicture: "https://ui-avatars.com/api/?name=User&background=random",
       isAuthenticated: true,
     };
     
@@ -45,8 +43,8 @@ export const signInWithGoogle = async (): Promise<User> => {
     
     return user;
   } catch (error) {
-    console.error("Error signing in with Google:", error);
-    throw new Error("Failed to sign in with Google");
+    console.error("Error signing in:", error);
+    throw new Error("Failed to sign in");
   }
 };
 

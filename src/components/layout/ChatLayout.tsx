@@ -4,7 +4,7 @@ import { Menu, Plus, UserCircle2, FileText, BarChart2, LogOut } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { signInWithGoogle, signOut, getCurrentUser, isAuthenticated } from "@/services/authService";
+import { signIn, signOut, getCurrentUser, isAuthenticated } from "@/services/authService";
 import { trackUniqueUser, isAdmin } from "@/services/analyticsService";
 import { toast } from "sonner";
 import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
@@ -33,10 +33,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
     window.dispatchEvent(new CustomEvent('new-chat'));
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleSignIn = async () => {
     try {
       setIsSigningIn(true);
-      const newUser = await signInWithGoogle();
+      const newUser = await signIn();
       setUser(newUser);
       
       // Track this as a unique user for analytics
@@ -118,7 +118,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               <Button 
                 variant="outline" 
                 className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-                onClick={handleGoogleSignIn}
+                onClick={handleSignIn}
                 disabled={isSigningIn}
               >
                 {isSigningIn ? (
@@ -129,7 +129,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
                 ) : (
                   <>
                     <UserCircle2 size={18} />
-                    <span>Sign In with Google</span>
+                    <span>Sign In</span>
                   </>
                 )}
               </Button>
