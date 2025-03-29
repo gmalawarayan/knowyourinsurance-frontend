@@ -1,9 +1,13 @@
 
 import React, { useState } from "react";
-import { Menu, Plus, UserCircle2, FileText } from "lucide-react";
+import { Menu, Plus, UserCircle2, FileText, BarChart2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { signInWithGoogle, signOut, getCurrentUser, isAuthenticated } from "@/services/authService";
+import { trackUniqueUser } from "@/services/analyticsService";
+import { toast } from "sonner";
+import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
 
 interface ChatLayoutProps {
   children: React.ReactNode;
@@ -12,6 +16,9 @@ interface ChatLayoutProps {
 const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
+  const [user, setUser] = useState(getCurrentUser());
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -22,6 +29,34 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
     setMessages([]);
     // Dispatch a custom event that the ChatInterface can listen for
     window.dispatchEvent(new CustomEvent('new-chat'));
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsSigningIn(true);
+      const newUser = await signInWithGoogle();
+      setUser(newUser);
+      
+      // Track this as a unique user for analytics
+      trackUniqueUser(newUser.id);
+      
+      toast.success("Signed in successfully!");
+    } catch (error) {
+      console.error("Sign in error:", error);
+      toast.error("Failed to sign in. Please try again.");
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    signOut();
+    setUser(null);
+    toast.info("Signed out successfully");
+  };
+
+  const handleViewMetrics = () => {
+    setMetricsOpen(true);
   };
 
   return (
@@ -70,12 +105,56 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               <span>New Chat</span>
             </Button>
             
+            {!user ? (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                onClick={handleGoogleSignIn}
+                disabled={isSigningIn}
+              >
+                {isSigningIn ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserCircle2 size={18} />
+                    <span>Sign In with Google</span>
+                  </>
+                )}
+              </Button>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
+                  {user.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.name} className="h-8 w-8 rounded-full" />
+                  ) : (
+                    <UserCircle2 size={24} className="text-primary" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{user.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                  onClick={handleSignOut}
+                >
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
+                </Button>
+              </>
+            )}
+            
             <Button 
               variant="outline" 
               className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+              onClick={handleViewMetrics}
             >
-              <UserCircle2 size={18} />
-              <span>Sign In</span>
+              <BarChart2 size={18} />
+              <span>Usage Analytics</span>
             </Button>
           </div>
           
@@ -113,6 +192,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
       >
         {children}
       </main>
+      
+      {/* Analytics Dialog */}
+      <UsageMetricsDialog open={metricsOpen} onOpenChange={setMetricsOpen} />
     </div>
   );
 };

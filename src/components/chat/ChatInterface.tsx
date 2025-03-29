@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, X, BarChart2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { uploadPdfToChatPDF, sendMessageToChatPDF, deletePdfSource } from "@/services/chatPdfService";
+import { trackPdfUpload, trackQueryAsked } from "@/services/analyticsService";
 
 interface Message {
   id: string;
@@ -84,15 +84,12 @@ const ChatInterface: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to the bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
-  // Listen for new-chat event
   useEffect(() => {
     const handleNewChat = () => {
-      // Clean up any active PDF source
       if (activePdfSource) {
         deletePdfSource(activePdfSource.sourceId)
           .then(() => console.log("PDF source deleted"))
@@ -113,7 +110,6 @@ const ChatInterface: React.FC = () => {
     return () => {
       window.removeEventListener('new-chat', handleNewChat);
       
-      // Clean up PDF source when component unmounts
       if (activePdfSource) {
         deletePdfSource(activePdfSource.sourceId)
           .catch((error) => console.error("Failed to delete PDF source:", error));
@@ -121,12 +117,10 @@ const ChatInterface: React.FC = () => {
     };
   }, [activePdfSource]);
 
-  // Process PDF file
   const processPdfFile = async (file: File, userQuery: string) => {
     setIsAnalyzing(true);
     
     try {
-      // Upload the PDF to ChatPDF API
       const source = await uploadPdfToChatPDF(file);
       
       if (!source) {
@@ -135,10 +129,11 @@ const ChatInterface: React.FC = () => {
         return;
       }
       
+      trackPdfUpload();
+      
       setActivePdfSource(source);
       setIsPdfMode(true);
       
-      // Add a message indicating PDF processing
       const systemMessage: Message = {
         id: Date.now().toString() + "-system",
         content: `PDF "${file.name}" uploaded successfully. You can now ask questions about this document.`,
@@ -148,7 +143,6 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, systemMessage]);
       
-      // If there's a query, process it immediately
       if (userQuery.trim()) {
         processMessageWithChatPDF(source.sourceId, userQuery);
       } else {
@@ -161,11 +155,12 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  // Process message with ChatPDF
   const processMessageWithChatPDF = async (sourceId: string, userMessage: string) => {
     setIsTyping(true);
     
     try {
+      trackQueryAsked();
+      
       const response = await sendMessageToChatPDF(sourceId, userMessage);
       
       const aiResponse: Message = {
@@ -185,11 +180,9 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  // Simulate AI response for non-PDF queries
   const simulateAIResponse = (userMessage: string) => {
     setIsTyping(true);
     
-    // Simulate AI thinking time
     setTimeout(() => {
       const aiResponse: Message = {
         id: Date.now().toString(),
@@ -211,7 +204,6 @@ const ChatInterface: React.FC = () => {
       return;
     }
     
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       content: message,
@@ -230,7 +222,6 @@ const ChatInterface: React.FC = () => {
     
     setMessages(prevMessages => [...prevMessages, userMessage]);
     
-    // Handle PDF mode vs regular chat mode
     if (isPdfMode && activePdfSource) {
       processMessageWithChatPDF(activePdfSource.sourceId, message);
     } else if (selectedFile && selectedFile.type === "application/pdf") {
@@ -247,7 +238,7 @@ const ChatInterface: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    const maxSize = 25 * 1024 * 1024; // 25MB (ChatPDF limit)
+    const maxSize = 25 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error("File is too large. Maximum size is 25MB.");
       return;
@@ -261,7 +252,6 @@ const ChatInterface: React.FC = () => {
     
     setSelectedFile(file);
     
-    // If PDF is selected, show a toast notification
     if (file.type === "application/pdf") {
       toast.info("PDF detected! Click Analyze to process with ChatPDF or Send to upload as attachment.");
     }
@@ -295,7 +285,6 @@ const ChatInterface: React.FC = () => {
     
     setIsAnalyzing(true);
     
-    // Process the PDF file
     const userMessage: Message = {
       id: Date.now().toString(),
       content: "I'd like to analyze this PDF.",
@@ -314,7 +303,6 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Chat messages area */}
       <ScrollArea className="flex-grow p-4 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
@@ -393,7 +381,6 @@ const ChatInterface: React.FC = () => {
         </div>
       </ScrollArea>
       
-      {/* Message input area */}
       <div className="border-t p-4 sticky bottom-0 bg-background/95 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
           {selectedFile && (
