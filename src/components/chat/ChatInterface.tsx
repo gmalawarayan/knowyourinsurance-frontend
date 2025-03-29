@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X, BarChart2, FileText } from "lucide-react";
+import { Send, Paperclip, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -117,7 +118,14 @@ const ChatInterface: React.FC = () => {
     };
   }, [activePdfSource]);
 
-  const processPdfFile = async (file: File, userQuery: string) => {
+  // Process PDF file upon upload
+  useEffect(() => {
+    if (selectedFile && selectedFile.type === "application/pdf") {
+      processPdfFile(selectedFile);
+    }
+  }, [selectedFile]);
+
+  const processPdfFile = async (file: File) => {
     setIsAnalyzing(true);
     
     try {
@@ -134,20 +142,23 @@ const ChatInterface: React.FC = () => {
       setActivePdfSource(source);
       setIsPdfMode(true);
       
-      const systemMessage: Message = {
-        id: Date.now().toString() + "-system",
-        content: `PDF "${file.name}" uploaded successfully. You can now ask questions about this document.`,
-        sender: "ai",
+      const userMessage: Message = {
+        id: Date.now().toString() + "-user",
+        content: "I've uploaded a PDF document.",
+        sender: "user",
         timestamp: new Date(),
+        attachment: {
+          type: "pdf",
+          name: file.name,
+          url: URL.createObjectURL(file),
+        },
       };
       
-      setMessages(prev => [...prev, systemMessage]);
+      setMessages(prev => [...prev, userMessage]);
       
-      if (userQuery.trim()) {
-        processMessageWithChatPDF(source.sourceId, userQuery);
-      } else {
-        setIsAnalyzing(false);
-      }
+      // Automatically get a summary of the PDF document
+      const initialPrompt = `Please provide a brief summary of what this PDF document contains.`;
+      processMessageWithChatPDF(source.sourceId, initialPrompt, false);
     } catch (error) {
       console.error("Error processing PDF:", error);
       toast.error("Failed to process PDF. Please try again.");
@@ -155,10 +166,22 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  const processMessageWithChatPDF = async (sourceId: string, userMessage: string) => {
+  const processMessageWithChatPDF = async (sourceId: string, userMessage: string, addUserMessage = true) => {
     setIsTyping(true);
     
     try {
+      if (addUserMessage) {
+        const newUserMessage: Message = {
+          id: Date.now().toString() + "-user-message",
+          content: userMessage,
+          sender: "user",
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, newUserMessage]);
+        setMessage("");
+      }
+      
       trackQueryAsked();
       
       const response = await sendMessageToChatPDF(sourceId, userMessage);
@@ -204,34 +227,30 @@ const ChatInterface: React.FC = () => {
       return;
     }
     
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: message,
-      sender: "user",
-      timestamp: new Date(),
-      attachment: selectedFile ? {
-        type: selectedFile.type.startsWith("image/") 
-          ? "image" 
-          : selectedFile.type === "application/pdf" 
-            ? "pdf" 
-            : "text",
-        name: selectedFile.name,
-        url: URL.createObjectURL(selectedFile),
-      } : undefined,
-    };
-    
-    setMessages(prevMessages => [...prevMessages, userMessage]);
-    
     if (isPdfMode && activePdfSource) {
       processMessageWithChatPDF(activePdfSource.sourceId, message);
-    } else if (selectedFile && selectedFile.type === "application/pdf") {
-      processPdfFile(selectedFile, message);
     } else {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: message,
+        sender: "user",
+        timestamp: new Date(),
+        attachment: selectedFile && !isPdfMode ? {
+          type: selectedFile.type.startsWith("image/") 
+            ? "image" 
+            : selectedFile.type === "application/pdf" 
+              ? "pdf" 
+              : "text",
+          name: selectedFile.name,
+          url: URL.createObjectURL(selectedFile),
+        } : undefined,
+      };
+      
+      setMessages(prevMessages => [...prevMessages, userMessage]);
       simulateAIResponse(message);
+      setMessage("");
+      setSelectedFile(null);
     }
-    
-    setMessage("");
-    setSelectedFile(null);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,7 +272,7 @@ const ChatInterface: React.FC = () => {
     setSelectedFile(file);
     
     if (file.type === "application/pdf") {
-      toast.info("PDF detected! Click Analyze to process with ChatPDF or Send to upload as attachment.");
+      toast.info("Processing PDF document...");
     }
   };
 
@@ -270,35 +289,6 @@ const ChatInterface: React.FC = () => {
     } catch (err) {
       toast.error("Failed to paste text. Please paste manually.");
     }
-  };
-  
-  const handleAnalyze = () => {
-    if (!selectedFile) {
-      toast.error("Please upload a PDF file to analyze");
-      return;
-    }
-    
-    if (selectedFile.type !== "application/pdf") {
-      toast.error("Only PDF files can be analyzed with ChatPDF");
-      return;
-    }
-    
-    setIsAnalyzing(true);
-    
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: "I'd like to analyze this PDF.",
-      sender: "user",
-      timestamp: new Date(),
-      attachment: {
-        type: "pdf",
-        name: selectedFile.name,
-        url: URL.createObjectURL(selectedFile),
-      },
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    processPdfFile(selectedFile, "");
   };
 
   return (
@@ -318,7 +308,7 @@ const ChatInterface: React.FC = () => {
                 </div>
                 <ol className="list-decimal pl-6 space-y-2 text-sm text-left text-muted-foreground">
                   <li>Click the paperclip icon to upload a PDF document</li>
-                  <li>Click the purple "Analyze" button to process the PDF</li>
+                  <li>Wait for the document to be processed automatically</li>
                   <li>Ask questions about the document in the chat</li>
                 </ol>
               </div>
@@ -412,6 +402,7 @@ const ChatInterface: React.FC = () => {
                     handleSubmit(e);
                   }
                 }}
+                disabled={isAnalyzing}
               />
               <input
                 type="file"
@@ -427,6 +418,7 @@ const ChatInterface: React.FC = () => {
                 className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground transition-colors scale-up-button"
                 onClick={triggerFileUpload}
                 aria-label="Upload file"
+                disabled={isAnalyzing}
               >
                 <Paperclip className="h-4 w-4" />
                 <span className="sr-only">Upload file</span>
@@ -437,34 +429,15 @@ const ChatInterface: React.FC = () => {
               size="icon" 
               className="h-12 w-12 shadow-md scale-up-button" 
               aria-label="Send message"
+              disabled={isAnalyzing || (!message.trim() && !selectedFile)}
             >
-              <Send className="h-5 w-5" />
+              {isAnalyzing ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
               <span className="sr-only">Send</span>
             </Button>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="button" 
-                    size="icon" 
-                    className="h-12 w-12 bg-purple-500 hover:bg-purple-600 text-white shadow-md scale-up-button"
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing || !selectedFile || selectedFile.type !== "application/pdf"}
-                    aria-label="Analyze PDF"
-                  >
-                    {isAnalyzing ? (
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <BarChart2 className="h-5 w-5" />
-                    )}
-                    <span className="sr-only">Analyze PDF</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Analyze your PDF</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
           
           <div className="flex justify-end mt-2">
@@ -474,6 +447,7 @@ const ChatInterface: React.FC = () => {
               size="sm"
               onClick={handlePasteText}
               className="text-xs h-8 text-muted-foreground hover:text-foreground scale-up-button"
+              disabled={isAnalyzing}
             >
               Paste from clipboard
             </Button>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { signInWithGoogle, signOut, getCurrentUser, isAuthenticated } from "@/services/authService";
-import { trackUniqueUser } from "@/services/analyticsService";
+import { trackUniqueUser, isAdmin } from "@/services/analyticsService";
 import { toast } from "sonner";
 import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
 
@@ -56,8 +56,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   };
 
   const handleViewMetrics = () => {
+    if (!isAdmin(user)) {
+      toast.error("You don't have permission to view analytics");
+      return;
+    }
     setMetricsOpen(true);
   };
+
+  // Check if user is admin
+  const userIsAdmin = isAdmin(user);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -148,14 +155,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </>
             )}
             
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-              onClick={handleViewMetrics}
-            >
-              <BarChart2 size={18} />
-              <span>Usage Analytics</span>
-            </Button>
+            {/* Only show analytics button to admins */}
+            {userIsAdmin && (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                onClick={handleViewMetrics}
+              >
+                <BarChart2 size={18} />
+                <span>Usage Analytics</span>
+              </Button>
+            )}
           </div>
           
           <Separator className="my-4" />
@@ -193,7 +203,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
         {children}
       </main>
       
-      {/* Analytics Dialog */}
+      {/* Analytics Dialog - will only be shown if metrics open is true */}
       <UsageMetricsDialog open={metricsOpen} onOpenChange={setMetricsOpen} />
     </div>
   );

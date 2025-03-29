@@ -63,6 +63,16 @@ export const trackUniqueUser = (userId: string) => {
   return metrics;
 };
 
+// Check if user is admin (for analytics access)
+export const isAdmin = (user: { id: string; email: string } | null): boolean => {
+  if (!user) return false;
+  
+  // This is a simple check. In a real app, you'd have a more robust admin check
+  // For example, checking against a list of admin emails or admin role in user profile
+  const adminEmails = ['admin@example.com'];
+  return adminEmails.includes(user.email);
+};
+
 // Reset metrics (for admin purposes)
 export const resetMetrics = () => {
   const emptyMetrics = {
