@@ -40,13 +40,47 @@ export const setUserInfo = (name: string, email: string): User => {
     localStorage.setItem('insurance-policy-user', JSON.stringify(user));
     currentUser = user;
     
-    // In a real app, we would make an API call to save this information on the server
-    console.log(`[Server] User information saved for ${name} (${email}) at ${user.createdAt}`);
+    // Save user data to userDetails.txt file
+    saveUserToFile(user);
     
     return user;
   } catch (error) {
     console.error("Error setting user info:", error);
     throw new Error("Failed to save user information");
+  }
+};
+
+// Save user data to a file
+const saveUserToFile = (user: User): void => {
+  try {
+    // In a browser environment, we can't directly write to the filesystem
+    // So we'll simulate this by creating a downloadable file
+    const userData = `
+User Details:
+--------------
+ID: ${user.id}
+Name: ${user.name}
+Email: ${user.email}
+Created: ${new Date(user.createdAt).toLocaleString()}
+--------------
+`;
+    
+    // Create a blob with the user data
+    const blob = new Blob([userData], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link element and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'userDetails.txt';
+    link.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    
+    console.log(`[Server] User information saved for ${user.name} (${user.email}) at ${user.createdAt}`);
+  } catch (error) {
+    console.error("Error saving user to file:", error);
   }
 };
 
