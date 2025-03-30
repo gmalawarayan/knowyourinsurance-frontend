@@ -1,10 +1,10 @@
-
 import React, { useState } from "react";
 import { 
   getUsageMetrics, 
   resetMetrics, 
   exportAnalyticsToCSV, 
-  isAdmin 
+  isAdmin,
+  getAllUserDetails
 } from "@/services/analyticsService";
 import { getCurrentUser } from "@/services/authService";
 import { 
@@ -14,7 +14,9 @@ import {
   Users, 
   Download, 
   RefreshCw, 
-  AlertTriangle 
+  AlertTriangle,
+  Calendar,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +38,7 @@ import {
 
 const AdminDashboard = () => {
   const [metrics, setMetrics] = useState(getUsageMetrics());
+  const [userDetails, setUserDetails] = useState(getAllUserDetails());
   const currentUser = getCurrentUser();
   const userIsAdmin = isAdmin(currentUser);
   
@@ -43,6 +46,7 @@ const AdminDashboard = () => {
     if (window.confirm("Are you sure you want to reset all analytics data? This cannot be undone.")) {
       const newMetrics = resetMetrics();
       setMetrics(newMetrics);
+      setUserDetails([]);
       toast.success("Analytics data has been reset successfully");
     }
   };
@@ -52,7 +56,7 @@ const AdminDashboard = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `chatpdf-analytics-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `insurance-policy-analytics-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -96,7 +100,7 @@ const AdminDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-1">
-              Analytics and management for ChatPDF service
+              Analytics and management for AnalyzeYourInsurancePolicy service
             </p>
           </div>
           
@@ -109,7 +113,7 @@ const AdminDashboard = () => {
                 </Button>
               </HoverCardTrigger>
               <HoverCardContent>
-                Export all analytics data to a CSV file for offline analysis
+                Export all analytics data and user details to a CSV file for offline analysis
               </HoverCardContent>
             </HoverCard>
             
@@ -121,7 +125,7 @@ const AdminDashboard = () => {
                 </Button>
               </HoverCardTrigger>
               <HoverCardContent>
-                Reset all analytics data. This action cannot be undone.
+                Reset all analytics data and user details. This action cannot be undone.
               </HoverCardContent>
             </HoverCard>
           </div>
@@ -191,6 +195,44 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* User Details Table */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>User Details</CardTitle>
+            <CardDescription>Information about users who have used the application</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>First Seen</TableHead>
+                  <TableHead>Last Seen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userDetails.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                      No user data available yet
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  userDetails.map((user, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{new Date(user.firstSeen).toLocaleString()}</TableCell>
+                      <TableCell>{new Date(user.lastSeen).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
         
         {/* Analytics Table */}
         <Card className="mb-8">

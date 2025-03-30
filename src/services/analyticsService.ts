@@ -1,4 +1,3 @@
-
 // Simple analytics service to track usage metrics
 
 interface UsageMetrics {
@@ -8,9 +7,17 @@ interface UsageMetrics {
   lastUsed: Date;
 }
 
+interface UserDetail {
+  id: string;
+  name: string;
+  email: string;
+  firstSeen: string;
+  lastSeen: string;
+}
+
 // Get stored metrics from localStorage
 export const getUsageMetrics = (): UsageMetrics => {
-  const storedMetrics = localStorage.getItem('chatpdf-metrics');
+  const storedMetrics = localStorage.getItem('insurance-policy-metrics');
   if (storedMetrics) {
     const metrics = JSON.parse(storedMetrics);
     // Convert string date back to Date object
@@ -32,7 +39,7 @@ export const trackPdfUpload = () => {
   const metrics = getUsageMetrics();
   metrics.totalPdfsUploaded += 1;
   metrics.lastUsed = new Date();
-  localStorage.setItem('chatpdf-metrics', JSON.stringify(metrics));
+  localStorage.setItem('insurance-policy-metrics', JSON.stringify(metrics));
   return metrics;
 };
 
@@ -41,15 +48,45 @@ export const trackQueryAsked = () => {
   const metrics = getUsageMetrics();
   metrics.totalQueriesAsked += 1;
   metrics.lastUsed = new Date();
-  localStorage.setItem('chatpdf-metrics', JSON.stringify(metrics));
+  localStorage.setItem('insurance-policy-metrics', JSON.stringify(metrics));
   return metrics;
 };
 
-// Track unique user (should be called after authentication)
+// Track unique user with detailed information
 export const trackUniqueUser = (userId: string) => {
   const metrics = getUsageMetrics();
-  // Store unique users in a separate storage to avoid duplicates
-  const uniqueUsersKey = 'chatpdf-unique-users';
+  
+  // Get user details from auth service
+  import('@/services/authService').then(authService => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      // Store user details in a separate storage with more information
+      const userDetailsKey = 'insurance-policy-user-details';
+      const userDetails: UserDetail[] = JSON.parse(localStorage.getItem(userDetailsKey) || '[]');
+      
+      const existingUserIndex = userDetails.findIndex(user => user.id === userId);
+      const now = new Date().toISOString();
+      
+      if (existingUserIndex === -1) {
+        // New user - add to the list
+        userDetails.push({
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          firstSeen: now,
+          lastSeen: now
+        });
+      } else {
+        // Existing user - update last seen
+        userDetails[existingUserIndex].lastSeen = now;
+      }
+      
+      localStorage.setItem(userDetailsKey, JSON.stringify(userDetails));
+    }
+  });
+  
+  // Update basic metrics as before
+  const uniqueUsersKey = 'insurance-policy-unique-users';
   const uniqueUsers = JSON.parse(localStorage.getItem(uniqueUsersKey) || '[]');
   
   if (!uniqueUsers.includes(userId)) {
@@ -57,7 +94,7 @@ export const trackUniqueUser = (userId: string) => {
     localStorage.setItem(uniqueUsersKey, JSON.stringify(uniqueUsers));
     metrics.uniqueUsers = uniqueUsers.length;
     metrics.lastUsed = new Date();
-    localStorage.setItem('chatpdf-metrics', JSON.stringify(metrics));
+    localStorage.setItem('insurance-policy-metrics', JSON.stringify(metrics));
   }
   
   return metrics;
@@ -65,8 +102,14 @@ export const trackUniqueUser = (userId: string) => {
 
 // Get list of unique user IDs
 export const getUniqueUserIds = (): string[] => {
-  const uniqueUsersKey = 'chatpdf-unique-users';
+  const uniqueUsersKey = 'insurance-policy-unique-users';
   return JSON.parse(localStorage.getItem(uniqueUsersKey) || '[]');
+};
+
+// Get detailed information about all users
+export const getAllUserDetails = (): UserDetail[] => {
+  const userDetailsKey = 'insurance-policy-user-details';
+  return JSON.parse(localStorage.getItem(userDetailsKey) || '[]');
 };
 
 // Check if user is admin (for analytics access)
@@ -90,15 +133,16 @@ export const resetMetrics = () => {
     uniqueUsers: 0,
     lastUsed: new Date()
   };
-  localStorage.setItem('chatpdf-metrics', JSON.stringify(emptyMetrics));
-  localStorage.removeItem('chatpdf-unique-users');
+  localStorage.setItem('insurance-policy-metrics', JSON.stringify(emptyMetrics));
+  localStorage.removeItem('insurance-policy-unique-users');
+  localStorage.removeItem('insurance-policy-user-details');
   return emptyMetrics;
 };
 
 // Export analytics data to CSV
 export const exportAnalyticsToCSV = (): string => {
   const metrics = getUsageMetrics();
-  const userIds = getUniqueUserIds();
+  const userDetails = getAllUserDetails();
   
   // Create CSV content
   let csvContent = "data:text/csv;charset=utf-8,";
@@ -110,11 +154,11 @@ export const exportAnalyticsToCSV = (): string => {
   csvContent += `Unique Users,${metrics.uniqueUsers}\n`;
   csvContent += `Last Used Date,${metrics.lastUsed.toISOString()}\n\n`;
   
-  // Add user IDs if available
-  if (userIds.length > 0) {
-    csvContent += "User IDs\n";
-    userIds.forEach(id => {
-      csvContent += `${id}\n`;
+  // Add user details if available
+  if (userDetails.length > 0) {
+    csvContent += "User ID,Name,Email,First Seen,Last Seen\n";
+    userDetails.forEach(user => {
+      csvContent += `${user.id},${user.name},${user.email},${user.firstSeen},${user.lastSeen}\n`;
     });
   }
   
