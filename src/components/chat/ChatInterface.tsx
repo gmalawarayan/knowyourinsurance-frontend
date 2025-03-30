@@ -220,6 +220,8 @@ const ChatInterface: React.FC = () => {
     const user = setUserInfo(name, email);
     trackUniqueUser(user.id);
     
+    console.log(`User information saved: ${name}, ${email}`);
+    
     setShowUserInfoDialog(false);
     
     if (pendingSummaryResponse && activePdfSource) {
@@ -329,6 +331,13 @@ const ChatInterface: React.FC = () => {
     } catch (err) {
       toast.error("Failed to paste text. Please paste manually.");
     }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      return;
+    }
+    setShowUserInfoDialog(open);
   };
 
   return (
@@ -498,6 +507,7 @@ const ChatInterface: React.FC = () => {
       <UserInfoDialog 
         open={showUserInfoDialog}
         onSubmit={handleUserInfoSubmit}
+        onOpenChange={handleDialogOpenChange}
       />
     </div>
   );

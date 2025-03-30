@@ -3,7 +3,6 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,9 +18,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface UserInfoDialogProps {
   open: boolean;
   onSubmit: (name: string, email: string) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const UserInfoDialog: React.FC<UserInfoDialogProps> = ({ open, onSubmit }) => {
+const UserInfoDialog: React.FC<UserInfoDialogProps> = ({ open, onSubmit, onOpenChange }) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -36,7 +36,7 @@ const UserInfoDialog: React.FC<UserInfoDialogProps> = ({ open, onSubmit }) => {
   };
 
   return (
-    <Dialog open={open}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Your Information</DialogTitle>
