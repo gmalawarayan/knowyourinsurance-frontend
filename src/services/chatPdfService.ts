@@ -1,13 +1,13 @@
 
-// ChatPDF API service
+// AnalyzeYourInsurancePolicy API service
 // API Key: sec_EvOyQVA4IfSmWsdU3EZufWHAhgUEN2WS
 
-interface ChatPDFSource {
+interface InsurancePolicySource {
   sourceId: string;
   fileName: string;
 }
 
-export async function uploadPdfToChatPDF(file: File): Promise<ChatPDFSource | undefined> {
+export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySource | undefined> {
   try {
     const formData = new FormData();
     formData.append("file", file);
@@ -36,7 +36,7 @@ export async function uploadPdfToChatPDF(file: File): Promise<ChatPDFSource | un
   }
 }
 
-export async function sendMessageToChatPDF(
+export async function sendMessageToAnalyzer(
   sourceId: string,
   message: string
 ): Promise<string> {
@@ -60,14 +60,14 @@ export async function sendMessageToChatPDF(
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || "Failed to send message to ChatPDF");
+      throw new Error(error.message || "Failed to send message to analyzer");
     }
 
     const data = await response.json();
     return data.content;
   } catch (error) {
-    console.error("Error sending message to ChatPDF:", error);
-    return "Sorry, I encountered an error while processing your PDF. Please try again.";
+    console.error("Error sending message to analyzer:", error);
+    return "Sorry, I encountered an error while processing your insurance policy. Please try again.";
   }
 }
 

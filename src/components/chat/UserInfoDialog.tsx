@@ -41,7 +41,7 @@ const UserInfoDialog: React.FC<UserInfoDialogProps> = ({ open, onSubmit, onOpenC
         <DialogHeader>
           <DialogTitle>Your Information</DialogTitle>
           <DialogDescription>
-            Please enter your name and email to continue chatting about your document.
+            Please enter your name and email to continue chatting about your insurance policy document.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

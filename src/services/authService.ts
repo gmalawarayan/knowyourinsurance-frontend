@@ -14,7 +14,7 @@ let currentUser: User | null = null;
 
 // Initialize user state from localStorage on load
 const initUserFromStorage = () => {
-  const storedUser = localStorage.getItem('chatpdf-user');
+  const storedUser = localStorage.getItem('insurance-policy-user');
   if (storedUser) {
     currentUser = JSON.parse(storedUser);
   }
@@ -37,7 +37,7 @@ export const setUserInfo = (name: string, email: string): User => {
     };
     
     // Save to localStorage
-    localStorage.setItem('chatpdf-user', JSON.stringify(user));
+    localStorage.setItem('insurance-policy-user', JSON.stringify(user));
     currentUser = user;
     
     // In a real app, we would make an API call to save this information on the server
@@ -52,7 +52,7 @@ export const setUserInfo = (name: string, email: string): User => {
 
 // Clear user info
 export const clearUserInfo = (): void => {
-  localStorage.removeItem('chatpdf-user');
+  localStorage.removeItem('insurance-policy-user');
   currentUser = null;
 };
 

@@ -82,7 +82,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <FileText size={20} className="text-purple-600" />
-              <span className="font-semibold text-lg">ChatPDF</span>
+              <span className="font-semibold text-lg">AnalyzeYourInsurancePolicy</span>
             </div>
           </div>
           
@@ -92,7 +92,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               onClick={handleNewChat}
             >
               <Plus size={18} />
-              <span>New Chat</span>
+              <span>New Analysis</span>
             </Button>
             
             {user && (
@@ -147,15 +147,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           <div className="flex-grow mt-2 overflow-y-auto">
             {/* Chat history or other sidebar content can go here */}
             <div className="py-3 px-2 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-2">About ChatPDF</p>
+              <p className="font-medium text-foreground mb-2">About AnalyzeYourInsurancePolicy</p>
               <ul className="space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  <span>Upload PDF files up to 25MB</span>
+                  <span>Upload insurance policy PDF files up to 25MB</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  <span>Ask questions about your documents</span>
+                  <span>Ask questions about your policy documents</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>

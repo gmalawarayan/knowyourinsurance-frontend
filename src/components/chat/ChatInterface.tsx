@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { uploadPdfToChatPDF, sendMessageToChatPDF, deletePdfSource } from "@/services/chatPdfService";
+import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource } from "@/services/chatPdfService";
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import UserInfoDialog from "./UserInfoDialog";
@@ -132,7 +132,7 @@ const ChatInterface: React.FC = () => {
     setIsAnalyzing(true);
     
     try {
-      const source = await uploadPdfToChatPDF(file);
+      const source = await uploadPdfToAnalyzer(file);
       
       if (!source) {
         toast.error("Failed to upload PDF. Please try again.");
@@ -147,7 +147,7 @@ const ChatInterface: React.FC = () => {
       
       const userMessage: Message = {
         id: Date.now().toString() + "-user",
-        content: "I've uploaded a PDF document.",
+        content: "I've uploaded an insurance policy document.",
         sender: "user",
         timestamp: new Date(),
         attachment: {
@@ -159,8 +159,8 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      const initialPrompt = `Please provide a brief summary of what this PDF document contains.`;
-      const summaryResponse = await processMessageWithChatPDF(source.sourceId, initialPrompt, false);
+      const initialPrompt = `Please provide a brief summary of what this insurance policy document contains.`;
+      const summaryResponse = await processMessageWithAnalyzer(source.sourceId, initialPrompt, false);
       
       if (!getCurrentUser() && summaryResponse) {
         setPendingSummaryResponse(summaryResponse);
@@ -173,7 +173,7 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  const processMessageWithChatPDF = async (sourceId: string, userMessage: string, addUserMessage = true): Promise<string | undefined> => {
+  const processMessageWithAnalyzer = async (sourceId: string, userMessage: string, addUserMessage = true): Promise<string | undefined> => {
     setIsTyping(true);
     
     try {
@@ -191,7 +191,7 @@ const ChatInterface: React.FC = () => {
       
       trackQueryAsked();
       
-      const response = await sendMessageToChatPDF(sourceId, userMessage);
+      const response = await sendMessageToAnalyzer(sourceId, userMessage);
       
       if (!addUserMessage && !getCurrentUser()) {
         return response;
@@ -207,7 +207,7 @@ const ChatInterface: React.FC = () => {
       setMessages(prev => [...prev, aiResponse]);
       return response;
     } catch (error) {
-      console.error("Error getting response from ChatPDF:", error);
+      console.error("Error getting response from analyzer:", error);
       toast.error("Failed to get response. Please try again.");
       return undefined;
     } finally {
@@ -235,7 +235,7 @@ const ChatInterface: React.FC = () => {
       setMessages(prev => [...prev, aiResponse]);
       setPendingSummaryResponse(null);
       
-      toast.success(`Thank you, ${name}! You can now chat about your document.`);
+      toast.success(`Thank you, ${name}! You can now chat about your policy.`);
     }
   };
 
@@ -270,7 +270,7 @@ const ChatInterface: React.FC = () => {
         return;
       }
       
-      processMessageWithChatPDF(activePdfSource.sourceId, message);
+      processMessageWithAnalyzer(activePdfSource.sourceId, message);
     } else {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -346,9 +346,9 @@ const ChatInterface: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center py-12 animate-fade-in">
-              <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to ChatPDF</h1>
+              <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to AnalyzeYourInsurancePolicy</h1>
               <p className="text-muted-foreground mb-6">
-                Upload a PDF document and ask questions about it.
+                Upload your insurance policy document and ask questions about it.
               </p>
               <div className="max-w-md mx-auto bg-muted p-6 rounded-xl shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
@@ -356,9 +356,9 @@ const ChatInterface: React.FC = () => {
                   <span className="font-medium">How to use:</span>
                 </div>
                 <ol className="list-decimal pl-6 space-y-2 text-sm text-left text-muted-foreground">
-                  <li>Click the paperclip icon to upload a PDF document</li>
+                  <li>Click the paperclip icon to upload your insurance policy document</li>
                   <li>Wait for the document to be processed automatically</li>
-                  <li>Ask questions about the document in the chat</li>
+                  <li>Ask questions about your policy in the chat</li>
                 </ol>
               </div>
             </div>
@@ -433,7 +433,7 @@ const ChatInterface: React.FC = () => {
             <div className="flex items-center gap-2 p-2 bg-purple-100 rounded-md mt-2 mb-2 animate-fade-in text-sm">
               <FileText className="h-4 w-4 text-purple-600" />
               <span className="text-purple-800 font-medium">
-                ChatPDF active: {activePdfSource.fileName}
+                Policy analysis active: {activePdfSource.fileName}
               </span>
             </div>
           )}
@@ -443,7 +443,7 @@ const ChatInterface: React.FC = () => {
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={isPdfMode ? "Ask a question about your PDF..." : "Type your message here..."}
+                placeholder={isPdfMode ? "Ask a question about your insurance policy..." : "Type your message here..."}
                 className="min-h-12 resize-none pr-10 shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-shadow duration-200"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
