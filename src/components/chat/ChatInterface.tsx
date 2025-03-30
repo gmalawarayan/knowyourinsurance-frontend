@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { uploadPdfToChatPDF, sendMessageToChatPDF, deletePdfSource } from "@/services/chatPdfService";
-import { trackPdfUpload, trackQueryAsked } from "@/services/analyticsService";
+import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import UserInfoDialog from "./UserInfoDialog";
 
