@@ -1,5 +1,5 @@
 
-// Simple authentication service
+// Simple user information service
 
 interface User {
   id: string;
@@ -11,8 +11,8 @@ interface User {
 
 let currentUser: User | null = null;
 
-// Initialize auth state from localStorage on load
-const initAuthFromStorage = () => {
+// Initialize user state from localStorage on load
+const initUserFromStorage = () => {
   const storedUser = localStorage.getItem('chatpdf-user');
   if (storedUser) {
     currentUser = JSON.parse(storedUser);
@@ -20,20 +20,17 @@ const initAuthFromStorage = () => {
 };
 
 // Call initialization when the module is first imported
-initAuthFromStorage();
+initUserFromStorage();
 
-// Sign in with email (simple implementation)
-export const signIn = async (): Promise<User> => {
+// Set user information
+export const setUserInfo = (name: string, email: string): User => {
   try {
-    // Simulate auth delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Create a mock user with a random ID
+    // Create a user with a random ID
     const user: User = {
       id: `user-${Math.random().toString(36).substring(2, 15)}`,
-      name: "User",
-      email: "user@example.com",
-      profilePicture: "https://ui-avatars.com/api/?name=User&background=random",
+      name,
+      email,
+      profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
       isAuthenticated: true,
     };
     
@@ -43,13 +40,13 @@ export const signIn = async (): Promise<User> => {
     
     return user;
   } catch (error) {
-    console.error("Error signing in:", error);
-    throw new Error("Failed to sign in");
+    console.error("Error setting user info:", error);
+    throw new Error("Failed to save user information");
   }
 };
 
-// Sign out
-export const signOut = (): void => {
+// Clear user info
+export const clearUserInfo = (): void => {
   localStorage.removeItem('chatpdf-user');
   currentUser = null;
 };

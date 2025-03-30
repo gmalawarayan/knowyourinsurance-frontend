@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { uploadPdfToChatPDF, sendMessageToChatPDF, deletePdfSource } from "@/services/chatPdfService";
 import { trackPdfUpload, trackQueryAsked } from "@/services/analyticsService";
+import { setUserInfo, getCurrentUser } from "@/services/authService";
+import UserInfoDialog from "./UserInfoDialog";
 
 interface Message {
   id: string;
@@ -82,6 +83,8 @@ const ChatInterface: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activePdfSource, setActivePdfSource] = useState<ChatPDFSource | null>(null);
   const [isPdfMode, setIsPdfMode] = useState(false);
+  const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
+  const [pendingSummaryResponse, setPendingSummaryResponse] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +107,7 @@ const ChatInterface: React.FC = () => {
       setIsAnalyzing(false);
       setActivePdfSource(null);
       setIsPdfMode(false);
+      setPendingSummaryResponse(null);
     };
     
     window.addEventListener('new-chat', handleNewChat);
@@ -118,7 +122,6 @@ const ChatInterface: React.FC = () => {
     };
   }, [activePdfSource]);
 
-  // Process PDF file upon upload
   useEffect(() => {
     if (selectedFile && selectedFile.type === "application/pdf") {
       processPdfFile(selectedFile);
@@ -156,9 +159,13 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Automatically get a summary of the PDF document
       const initialPrompt = `Please provide a brief summary of what this PDF document contains.`;
-      processMessageWithChatPDF(source.sourceId, initialPrompt, false);
+      const summaryResponse = await processMessageWithChatPDF(source.sourceId, initialPrompt, false);
+      
+      if (!getCurrentUser() && summaryResponse) {
+        setPendingSummaryResponse(summaryResponse);
+        setShowUserInfoDialog(true);
+      }
     } catch (error) {
       console.error("Error processing PDF:", error);
       toast.error("Failed to process PDF. Please try again.");
@@ -166,7 +173,7 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  const processMessageWithChatPDF = async (sourceId: string, userMessage: string, addUserMessage = true) => {
+  const processMessageWithChatPDF = async (sourceId: string, userMessage: string, addUserMessage = true): Promise<string | undefined> => {
     setIsTyping(true);
     
     try {
@@ -186,6 +193,10 @@ const ChatInterface: React.FC = () => {
       
       const response = await sendMessageToChatPDF(sourceId, userMessage);
       
+      if (!addUserMessage && !getCurrentUser()) {
+        return response;
+      }
+      
       const aiResponse: Message = {
         id: Date.now().toString(),
         content: response,
@@ -194,12 +205,35 @@ const ChatInterface: React.FC = () => {
       };
       
       setMessages(prev => [...prev, aiResponse]);
+      return response;
     } catch (error) {
       console.error("Error getting response from ChatPDF:", error);
       toast.error("Failed to get response. Please try again.");
+      return undefined;
     } finally {
       setIsTyping(false);
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleUserInfoSubmit = (name: string, email: string) => {
+    const user = setUserInfo(name, email);
+    trackUniqueUser(user.id);
+    
+    setShowUserInfoDialog(false);
+    
+    if (pendingSummaryResponse && activePdfSource) {
+      const aiResponse: Message = {
+        id: Date.now().toString(),
+        content: pendingSummaryResponse,
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, aiResponse]);
+      setPendingSummaryResponse(null);
+      
+      toast.success(`Thank you, ${name}! You can now chat about your document.`);
     }
   };
 
@@ -228,6 +262,12 @@ const ChatInterface: React.FC = () => {
     }
     
     if (isPdfMode && activePdfSource) {
+      if (!getCurrentUser()) {
+        toast.error("Please provide your name and email first.");
+        setShowUserInfoDialog(true);
+        return;
+      }
+      
       processMessageWithChatPDF(activePdfSource.sourceId, message);
     } else {
       const userMessage: Message = {
@@ -454,6 +494,11 @@ const ChatInterface: React.FC = () => {
           </div>
         </form>
       </div>
+      
+      <UserInfoDialog 
+        open={showUserInfoDialog}
+        onSubmit={handleUserInfoSubmit}
+      />
     </div>
   );
 };
