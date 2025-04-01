@@ -46,6 +46,24 @@ export const setUserInfo = (name: string, email: string): User => {
       console.log(`User tracked in analytics: ${user.name} (${user.email})`);
     });
     
+    // Track user with Vercel Analytics
+    // This will show up in your Vercel Analytics dashboard
+    try {
+      const trackEvent = new CustomEvent('vercel-analytics', { 
+        detail: { 
+          type: 'user-login',
+          properties: {
+            userId: user.id,
+            userEmail: user.email,
+            userName: user.name
+          }
+        } 
+      });
+      document.dispatchEvent(trackEvent);
+    } catch (error) {
+      console.error("Failed to track user with Vercel Analytics:", error);
+    }
+    
     return user;
   } catch (error) {
     console.error("Error setting user info:", error);

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { 
   getUsageMetrics, 
@@ -16,7 +17,8 @@ import {
   RefreshCw, 
   AlertTriangle,
   Calendar,
-  Mail
+  Mail,
+  Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
     return (
       <ChatLayout>
         <div className="flex items-center justify-center h-screen">
-          <Card className="w-[350px]">
+          <Card className="w-[450px]">
             <CardHeader>
               <div className="flex justify-center mb-4">
                 <AlertTriangle className="h-12 w-12 text-amber-500" />
@@ -77,6 +79,17 @@ const AdminDashboard = () => {
                 You don't have permission to view the admin dashboard.
               </CardDescription>
             </CardHeader>
+            <CardContent className="text-center">
+              <div className="flex items-center justify-center mt-2 mb-4 p-4 bg-blue-50 text-blue-600 rounded-md">
+                <Info className="h-5 w-5 mr-2" />
+                <p>To get admin access, please log in with one of these emails:</p>
+              </div>
+              <ul className="list-disc text-left ml-12 text-muted-foreground">
+                <li>admin@example.com</li>
+                <li>your.email@example.com</li>
+                <li>admin@chatpdf.com</li>
+              </ul>
+            </CardContent>
             <CardFooter className="flex justify-center">
               <Button variant="outline" onClick={() => window.location.href = '/'}>
                 Return to Home
