@@ -1,5 +1,5 @@
-
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   getUsageMetrics, 
   resetMetrics, 
@@ -7,7 +7,11 @@ import {
   isAdmin,
   getAllUserDetails
 } from "@/services/analyticsService";
-import { getCurrentUser } from "@/services/authService";
+import { 
+  getCurrentUser,
+  adminLogout,
+  isAdminAuthenticated 
+} from "@/services/authService";
 import { 
   BarChart2, 
   File, 
@@ -18,7 +22,8 @@ import {
   AlertTriangle,
   Calendar,
   Mail,
-  Info
+  Info,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +47,13 @@ const AdminDashboard = () => {
   const [metrics, setMetrics] = useState(getUsageMetrics());
   const [userDetails, setUserDetails] = useState(getAllUserDetails());
   const currentUser = getCurrentUser();
-  const userIsAdmin = isAdmin(currentUser);
+  const navigate = useNavigate();
+  
+  // Check if admin is authenticated
+  if (!isAdminAuthenticated()) {
+    navigate("/admin/login");
+    return null;
+  }
   
   const handleResetMetrics = () => {
     if (window.confirm("Are you sure you want to reset all analytics data? This cannot be undone.")) {
@@ -64,43 +75,13 @@ const AdminDashboard = () => {
     document.body.removeChild(link);
     toast.success("Analytics data exported successfully");
   };
-
-  if (!userIsAdmin) {
-    return (
-      <ChatLayout>
-        <div className="flex items-center justify-center h-screen">
-          <Card className="w-[450px]">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-amber-500" />
-              </div>
-              <CardTitle className="text-center">Access Restricted</CardTitle>
-              <CardDescription className="text-center">
-                You don't have permission to view the admin dashboard.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="flex items-center justify-center mt-2 mb-4 p-4 bg-blue-50 text-blue-600 rounded-md">
-                <Info className="h-5 w-5 mr-2" />
-                <p>To get admin access, please log in with one of these emails:</p>
-              </div>
-              <ul className="list-disc text-left ml-12 text-muted-foreground">
-                <li>admin@example.com</li>
-                <li>your.email@example.com</li>
-                <li>admin@chatpdf.com</li>
-              </ul>
-            </CardContent>
-            <CardFooter className="flex justify-center">
-              <Button variant="outline" onClick={() => window.location.href = '/'}>
-                Return to Home
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </ChatLayout>
-    );
-  }
   
+  const handleLogout = () => {
+    adminLogout();
+    toast.info("Admin logged out successfully");
+    navigate("/admin/login");
+  };
+
   // Calculate percentage change (just for demonstration, mocking growth)
   const getRandomPercentage = () => {
     return (Math.random() * 30 + 5).toFixed(1);
@@ -141,6 +122,11 @@ const AdminDashboard = () => {
                 Reset all analytics data and user details. This action cannot be undone.
               </HoverCardContent>
             </HoverCard>
+            
+            <Button onClick={handleLogout} variant="outline" className="flex gap-2">
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </Button>
           </div>
         </div>
         

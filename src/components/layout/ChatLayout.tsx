@@ -4,7 +4,7 @@ import { Menu, Plus, UserCircle2, FileText, BarChart2, LogOut } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { clearUserInfo, getCurrentUser, isAuthenticated } from "@/services/authService";
+import { clearUserInfo, getCurrentUser, isAuthenticated, isAdminAuthenticated } from "@/services/authService";
 import { trackUniqueUser, isAdmin } from "@/services/analyticsService";
 import { toast } from "sonner";
 import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
@@ -43,11 +43,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   };
   
   const goToAdminDashboard = () => {
-    navigate("/admin");
+    if (isAdminAuthenticated()) {
+      navigate("/admin");
+    } else {
+      navigate("/admin/login");
+    }
   };
 
   // Check if user is admin
-  const userIsAdmin = isAdmin(user);
+  const userIsAdmin = isAdmin(user) || isAdminAuthenticated();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -119,27 +123,25 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </>
             )}
             
-            {/* Only show analytics options to admins */}
-            {userIsAdmin && (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-                  onClick={handleViewMetrics}
-                >
-                  <BarChart2 size={18} />
-                  <span>Quick Analytics</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-                  onClick={goToAdminDashboard}
-                >
-                  <BarChart2 size={18} />
-                  <span>Admin Dashboard</span>
-                </Button>
-              </>
-            )}
+            {/* Analytics button visible to all users but redirects to login or dashboard */}
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+              onClick={handleViewMetrics}
+            >
+              <BarChart2 size={18} />
+              <span>Quick Analytics</span>
+            </Button>
+            
+            {/* Admin Dashboard button visible to all users but redirects to login if not admin */}
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+              onClick={goToAdminDashboard}
+            >
+              <BarChart2 size={18} />
+              <span>Admin Dashboard</span>
+            </Button>
           </div>
           
           <Separator className="my-4" />

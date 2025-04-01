@@ -8,6 +8,7 @@ interface User {
   profilePicture?: string;
   isAuthenticated: boolean;
   createdAt: string;
+  isAdmin?: boolean;
 }
 
 let currentUser: User | null = null;
@@ -17,6 +18,11 @@ const initUserFromStorage = () => {
   const storedUser = localStorage.getItem('insurance-policy-user');
   if (storedUser) {
     currentUser = JSON.parse(storedUser);
+  }
+  
+  const adminToken = localStorage.getItem('admin-auth-token');
+  if (adminToken && currentUser) {
+    currentUser.isAdmin = true;
   }
 };
 
@@ -71,9 +77,45 @@ export const setUserInfo = (name: string, email: string): User => {
   }
 };
 
+// Admin authentication
+export const adminLogin = (username: string, password: string): boolean => {
+  // Simple hardcoded check for the default admin credentials
+  if (username === 'tgomathi' && password === '123') {
+    // Create an admin token - in a real app, this would be more secure
+    const token = `admin-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('admin-auth-token', token);
+    
+    // Update current user if exists
+    if (currentUser) {
+      currentUser.isAdmin = true;
+      localStorage.setItem('insurance-policy-user', JSON.stringify(currentUser));
+    }
+    
+    return true;
+  }
+  return false;
+};
+
+// Check if user is admin
+export const isAdminAuthenticated = (): boolean => {
+  return localStorage.getItem('admin-auth-token') !== null;
+};
+
+// Admin logout
+export const adminLogout = (): void => {
+  localStorage.removeItem('admin-auth-token');
+  
+  // Update current user if exists
+  if (currentUser) {
+    currentUser.isAdmin = false;
+    localStorage.setItem('insurance-policy-user', JSON.stringify(currentUser));
+  }
+};
+
 // Clear user info
 export const clearUserInfo = (): void => {
   localStorage.removeItem('insurance-policy-user');
+  localStorage.removeItem('admin-auth-token');
   currentUser = null;
 };
 
