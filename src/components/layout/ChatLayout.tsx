@@ -123,7 +123,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </>
             )}
             
-            {/* Analytics button visible to all users but redirects to login or dashboard */}
+            {/* Analytics button now directly opens the metrics dialog */}
             <Button 
               variant="outline" 
               className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
@@ -133,7 +133,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               <span>Quick Analytics</span>
             </Button>
             
-            {/* Admin Dashboard button visible to all users but redirects to login if not admin */}
+            {/* Admin Dashboard button */}
             <Button 
               variant="outline" 
               className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
