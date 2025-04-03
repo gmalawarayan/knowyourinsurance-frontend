@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import { Mail, MapPin, Phone } from "lucide-react";
@@ -9,8 +8,8 @@ const Contact: React.FC = () => {
     {
       icon: <Mail className="h-5 w-5 text-blue-600" />,
       title: "Email",
-      details: "hello@designcraft.com",
-      link: "mailto:hello@designcraft.com",
+      details: "analyseyourpolicy@gmail.com",
+      link: "mailto:analyseyourpolicy@gmail.com",
     },
     {
       icon: <Phone className="h-5 w-5 text-blue-600" />,
