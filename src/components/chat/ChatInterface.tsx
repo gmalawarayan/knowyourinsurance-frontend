@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, X, FileText, Camera, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -289,9 +290,10 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     setTimeout(async () => {
-      let responseText = `I received your message: "${userMessage}"${
-        selectedFile && !isPdfMode ? ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}` : ""
-      };
+      let responseText = `I received your message: "${userMessage}"`;
+      if (selectedFile && !isPdfMode) {
+        responseText += ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}`;
+      }
       
       // Translate the response if Tamil is selected
       if (language === "tamil") {
