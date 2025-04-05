@@ -14,7 +14,6 @@ import {
 import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource } from "@/services/chatPdfService";
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
-import UserInfoDialog from "./UserInfoDialog";
 import PhotoCapture from "./PhotoCapture";
 
 interface Message {
@@ -85,8 +84,6 @@ const ChatInterface: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activePdfSource, setActivePdfSource] = useState<ChatPDFSource | null>(null);
   const [isPdfMode, setIsPdfMode] = useState(false);
-  const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
-  const [pendingSummaryResponse, setPendingSummaryResponse] = useState<string | null>(null);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -110,7 +107,6 @@ const ChatInterface: React.FC = () => {
       setIsAnalyzing(false);
       setActivePdfSource(null);
       setIsPdfMode(false);
-      setPendingSummaryResponse(null);
     };
     
     window.addEventListener('new-chat', handleNewChat);
@@ -162,13 +158,15 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      const initialPrompt = `Please provide a brief summary of what this insurance policy document contains.`;
-      const summaryResponse = await processMessageWithAnalyzer(source.sourceId, initialPrompt, false);
-      
-      if (!getCurrentUser() && summaryResponse) {
-        setPendingSummaryResponse(summaryResponse);
-        setShowUserInfoDialog(true);
+      // Set default user if none exists
+      if (!getCurrentUser()) {
+        const user = setUserInfo("User", "user@example.com");
+        trackUniqueUser(user.id);
       }
+      
+      const initialPrompt = `Please provide a brief summary of what this insurance policy document contains.`;
+      await processMessageWithAnalyzer(source.sourceId, initialPrompt, false);
+      
     } catch (error) {
       console.error("Error processing PDF:", error);
       toast.error("Failed to process PDF. Please try again.");
@@ -196,10 +194,6 @@ const ChatInterface: React.FC = () => {
       
       const response = await sendMessageToAnalyzer(sourceId, userMessage);
       
-      if (!addUserMessage && !getCurrentUser()) {
-        return response;
-      }
-      
       const aiResponse: Message = {
         id: Date.now().toString(),
         content: response,
@@ -216,29 +210,6 @@ const ChatInterface: React.FC = () => {
     } finally {
       setIsTyping(false);
       setIsAnalyzing(false);
-    }
-  };
-
-  const handleUserInfoSubmit = (name: string, email: string) => {
-    const user = setUserInfo(name, email);
-    trackUniqueUser(user.id);
-    
-    console.log(`User information saved: ${name}, ${email}`);
-    
-    setShowUserInfoDialog(false);
-    
-    if (pendingSummaryResponse && activePdfSource) {
-      const aiResponse: Message = {
-        id: Date.now().toString(),
-        content: pendingSummaryResponse,
-        sender: "ai",
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, aiResponse]);
-      setPendingSummaryResponse(null);
-      
-      toast.success(`Thank you, ${name}! You can now chat about your policy.`);
     }
   };
 
@@ -330,10 +301,10 @@ const ChatInterface: React.FC = () => {
     }
     
     if (isPdfMode && activePdfSource) {
+      // Ensure we have a default user set
       if (!getCurrentUser()) {
-        toast.error("Please provide your name and email first.");
-        setShowUserInfoDialog(true);
-        return;
+        const user = setUserInfo("User", "user@example.com");
+        trackUniqueUser(user.id);
       }
       
       processMessageWithAnalyzer(activePdfSource.sourceId, message);
@@ -397,13 +368,6 @@ const ChatInterface: React.FC = () => {
     } catch (err) {
       toast.error("Failed to paste text. Please paste manually.");
     }
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      return;
-    }
-    setShowUserInfoDialog(open);
   };
 
   return (
@@ -584,12 +548,6 @@ const ChatInterface: React.FC = () => {
           </div>
         </form>
       </div>
-      
-      <UserInfoDialog 
-        open={showUserInfoDialog}
-        onSubmit={handleUserInfoSubmit}
-        onOpenChange={handleDialogOpenChange}
-      />
 
       {showPhotoCapture && (
         <PhotoCapture 
