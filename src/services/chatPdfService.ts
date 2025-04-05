@@ -38,9 +38,16 @@ export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySo
 
 export async function sendMessageToAnalyzer(
   sourceId: string,
-  message: string
+  message: string,
+  language: "english" | "tamil" = "english"
 ): Promise<string> {
   try {
+    // If the message is in Tamil, translate it to English before sending to ChatPDF
+    let processedMessage = message;
+    if (language === "tamil") {
+      processedMessage = await translateText(message, "tamil", "english");
+    }
+
     const response = await fetch("https://api.chatpdf.com/v1/chats/message", {
       method: "POST",
       headers: {
@@ -52,7 +59,7 @@ export async function sendMessageToAnalyzer(
         messages: [
           {
             role: "user",
-            content: message,
+            content: processedMessage,
           },
         ],
       }),
@@ -64,6 +71,12 @@ export async function sendMessageToAnalyzer(
     }
 
     const data = await response.json();
+    
+    // If Tamil is selected, translate the response to Tamil
+    if (language === "tamil") {
+      return translateText(data.content, "english", "tamil");
+    }
+    
     return data.content;
   } catch (error) {
     console.error("Error sending message to analyzer:", error);
@@ -93,5 +106,41 @@ export async function deletePdfSource(sourceId: string): Promise<boolean> {
   } catch (error) {
     console.error("Error deleting PDF source:", error);
     return false;
+  }
+}
+
+// Translation service using LibreTranslate API
+export async function translateText(
+  text: string, 
+  from: "english" | "tamil", 
+  to: "english" | "tamil"
+): Promise<string> {
+  try {
+    const fromCode = from === "english" ? "en" : "ta";
+    const toCode = to === "english" ? "en" : "ta";
+    
+    const response = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + 
+      fromCode + "&tl=" + toCode + "&dt=t&q=" + encodeURIComponent(text));
+    
+    if (!response.ok) {
+      throw new Error("Translation failed");
+    }
+    
+    const data = await response.json();
+    let translatedText = "";
+    
+    // The response format has translations in nested arrays
+    if (data && data[0]) {
+      data[0].forEach((item: any) => {
+        if (item[0]) {
+          translatedText += item[0];
+        }
+      });
+    }
+    
+    return translatedText || text;
+  } catch (error) {
+    console.error("Translation error:", error);
+    return text; // Return original text if translation fails
   }
 }

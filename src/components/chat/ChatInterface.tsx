@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X, FileText, Camera } from "lucide-react";
+import { Send, Paperclip, X, FileText, Camera, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +10,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource } from "@/services/chatPdfService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource, translateText } from "@/services/chatPdfService";
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import PhotoCapture from "./PhotoCapture";
@@ -38,6 +44,8 @@ interface ChatPDFSource {
   sourceId: string;
   fileName: string;
 }
+
+type Language = "english" | "tamil";
 
 const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
   const isImage = file.type.startsWith("image/");
@@ -85,6 +93,7 @@ const ChatInterface: React.FC = () => {
   const [activePdfSource, setActivePdfSource] = useState<ChatPDFSource | null>(null);
   const [isPdfMode, setIsPdfMode] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [language, setLanguage] = useState<Language>("english");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -192,7 +201,7 @@ const ChatInterface: React.FC = () => {
       
       trackQueryAsked();
       
-      const response = await sendMessageToAnalyzer(sourceId, userMessage);
+      const response = await sendMessageToAnalyzer(sourceId, userMessage, language);
       
       const aiResponse: Message = {
         id: Date.now().toString(),
@@ -276,15 +285,22 @@ const ChatInterface: React.FC = () => {
     });
   };
 
-  const simulateAIResponse = (userMessage: string) => {
+  const simulateAIResponse = async (userMessage: string) => {
     setIsTyping(true);
     
-    setTimeout(() => {
+    setTimeout(async () => {
+      let responseText = `I received your message: "${userMessage}"${
+        selectedFile && !isPdfMode ? ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}` : ""
+      };
+      
+      // Translate the response if Tamil is selected
+      if (language === "tamil") {
+        responseText = await translateText(responseText, "english", "tamil");
+      }
+      
       const aiResponse: Message = {
         id: Date.now().toString(),
-        content: `I received your message: "${userMessage}"${
-          selectedFile && !isPdfMode ? ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}` : ""
-        }`,
+        content: responseText,
         sender: "ai",
         timestamp: new Date(),
       };
@@ -370,6 +386,16 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const handleLanguageChange = (value: string) => {
+    setLanguage(value as Language);
+    
+    const welcomeMessage = value === "english" 
+      ? "Language changed to English!"
+      : "மொழி தமிழாக மாற்றப்பட்டது!"; // "Language changed to Tamil!" in Tamil
+      
+    toast.success(welcomeMessage);
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <ScrollArea className="flex-grow p-4 overflow-y-auto">
@@ -390,6 +416,7 @@ const ChatInterface: React.FC = () => {
                   <li>Or click the camera icon to take a photo of your physical document</li>
                   <li>Wait for the document to be processed automatically</li>
                   <li>Ask questions about your policy in the chat</li>
+                  <li>Select your preferred language from the dropdown</li>
                 </ol>
               </div>
             </div>
@@ -470,11 +497,33 @@ const ChatInterface: React.FC = () => {
           )}
           
           <div className="flex gap-2 mt-2">
+            <Select
+              defaultValue="english"
+              onValueChange={handleLanguageChange}
+            >
+              <SelectTrigger className="w-36 h-12 shadow-sm border-input flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <SelectValue placeholder="Language" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">English</SelectItem>
+                <SelectItem value="tamil">தமிழ் (Tamil)</SelectItem>
+              </SelectContent>
+            </Select>
+            
             <div className="flex-1 relative">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={isPdfMode ? "Ask a question about your insurance policy..." : "Type your message here..."}
+                placeholder={isPdfMode 
+                  ? language === "english" 
+                    ? "Ask a question about your insurance policy..." 
+                    : "உங்கள் காப்பீட்டுக் கொள்கை பற்றிய கேள்வியைக் கேளுங்கள்..."
+                  : language === "english"
+                    ? "Type your message here..."
+                    : "உங்கள் செய்தியை இங்கே தட்டச்சு செய்யவும்..."}
                 className="min-h-12 resize-none pr-10 shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-shadow duration-200"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -543,7 +592,7 @@ const ChatInterface: React.FC = () => {
               className="text-xs h-8 text-muted-foreground hover:text-foreground scale-up-button"
               disabled={isAnalyzing}
             >
-              Paste from clipboard
+              {language === "english" ? "Paste from clipboard" : "கிளிப்போர்டிலிருந்து ஒட்டவும்"}
             </Button>
           </div>
         </form>
