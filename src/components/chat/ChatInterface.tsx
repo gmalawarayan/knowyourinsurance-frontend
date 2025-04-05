@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X, FileText } from "lucide-react";
+import { Send, Paperclip, X, FileText, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,6 +15,7 @@ import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource } from "@/s
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import UserInfoDialog from "./UserInfoDialog";
+import PhotoCapture from "./PhotoCapture";
 
 interface Message {
   id: string;
@@ -85,6 +87,7 @@ const ChatInterface: React.FC = () => {
   const [isPdfMode, setIsPdfMode] = useState(false);
   const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
   const [pendingSummaryResponse, setPendingSummaryResponse] = useState<string | null>(null);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -239,6 +242,69 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const handlePhotoCapture = async (photoBlob: Blob) => {
+    try {
+      setShowPhotoCapture(false);
+      setIsAnalyzing(true);
+      toast.info("Converting photo to PDF...");
+      
+      // Convert the image to PDF 
+      const photoFile = new File([photoBlob], "document_photo.jpg", { type: "image/jpeg" });
+      const pdfBlob = await convertImageToPdf(photoFile);
+      const pdfFile = new File([pdfBlob], "converted_document.pdf", { type: "application/pdf" });
+      
+      setSelectedFile(pdfFile);
+      // The existing useEffect will trigger processPdfFile since it's a PDF
+    } catch (error) {
+      console.error("Error processing photo:", error);
+      toast.error("Failed to process photo. Please try again.");
+      setIsAnalyzing(false);
+    }
+  };
+  
+  const convertImageToPdf = async (imageFile: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          
+          // Set the canvas dimensions to match the image with padding
+          const padding = 50; // padding in pixels
+          canvas.width = img.width + (padding * 2);
+          canvas.height = img.height + (padding * 2);
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error("Could not get canvas context");
+          
+          // Fill with white background
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw the image with padding
+          ctx.drawImage(img, padding, padding, img.width, img.height);
+          
+          // Convert to PDF using canvas.toBlob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Failed to convert image to blob"));
+            }
+          }, 'application/pdf');
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      img.onerror = () => {
+        reject(new Error("Failed to load image"));
+      };
+      
+      img.src = URL.createObjectURL(imageFile);
+    });
+  };
+
   const simulateAIResponse = (userMessage: string) => {
     setIsTyping(true);
     
@@ -348,7 +414,7 @@ const ChatInterface: React.FC = () => {
             <div className="text-center py-12 animate-fade-in">
               <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to AnalyzeYourInsurancePolicy</h1>
               <p className="text-muted-foreground mb-6">
-                Upload your insurance policy document and ask questions about it.
+                Upload your insurance policy document or take a photo and ask questions about it.
               </p>
               <div className="max-w-md mx-auto bg-muted p-6 rounded-xl shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
@@ -357,6 +423,7 @@ const ChatInterface: React.FC = () => {
                 </div>
                 <ol className="list-decimal pl-6 space-y-2 text-sm text-left text-muted-foreground">
                   <li>Click the paperclip icon to upload your insurance policy document</li>
+                  <li>Or click the camera icon to take a photo of your physical document</li>
                   <li>Wait for the document to be processed automatically</li>
                   <li>Ask questions about your policy in the chat</li>
                 </ol>
@@ -460,18 +527,32 @@ const ChatInterface: React.FC = () => {
                 accept="image/jpeg,image/png,image/gif,application/pdf,text/plain"
                 onChange={handleFileSelect}
               />
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground transition-colors scale-up-button"
-                onClick={triggerFileUpload}
-                aria-label="Upload file"
-                disabled={isAnalyzing}
-              >
-                <Paperclip className="h-4 w-4" />
-                <span className="sr-only">Upload file</span>
-              </Button>
+              <div className="absolute right-2 top-2 flex space-x-1">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors scale-up-button"
+                  onClick={() => setShowPhotoCapture(true)}
+                  aria-label="Take photo"
+                  disabled={isAnalyzing}
+                >
+                  <Camera className="h-4 w-4" />
+                  <span className="sr-only">Take photo</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors scale-up-button"
+                  onClick={triggerFileUpload}
+                  aria-label="Upload file"
+                  disabled={isAnalyzing}
+                >
+                  <Paperclip className="h-4 w-4" />
+                  <span className="sr-only">Upload file</span>
+                </Button>
+              </div>
             </div>
             <Button 
               type="submit" 
@@ -509,6 +590,13 @@ const ChatInterface: React.FC = () => {
         onSubmit={handleUserInfoSubmit}
         onOpenChange={handleDialogOpenChange}
       />
+
+      {showPhotoCapture && (
+        <PhotoCapture 
+          onCapture={handlePhotoCapture} 
+          onClose={() => setShowPhotoCapture(false)} 
+        />
+      )}
     </div>
   );
 };
