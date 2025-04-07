@@ -1,15 +1,25 @@
 
-// Updated service to use our custom PDF analysis implementation
-import { processDocument, generateResponse, deleteDocument, translateText } from './pdfAnalysisService';
+// Service for handling ChatPDF API integration for insurance policy analysis
+import { 
+  uploadPdfToChatPdf, 
+  sendMessageToChatPdf, 
+  deleteChatPdfSource,
+  translateText
+} from './pdfAnalysisService';
 
 interface InsurancePolicySource {
   sourceId: string;
   fileName: string;
 }
 
+// Upload insurance policy PDF to ChatPDF API
 export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySource | undefined> {
   try {
-    const sourceId = await processDocument(file);
+    const sourceId = await uploadPdfToChatPdf(file);
+    
+    if (!sourceId) {
+      return undefined;
+    }
     
     return { 
       sourceId,
@@ -21,28 +31,44 @@ export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySo
   }
 }
 
+// Send a message to ChatPDF API and get response
 export async function sendMessageToAnalyzer(
   sourceId: string,
   message: string,
   language: "english" | "tamil" = "english"
 ): Promise<string> {
   try {
-    const response = await generateResponse(sourceId, message, language);
+    // If the query is in Tamil, translate it to English for processing
+    let processedQuery = message;
+    if (language === "tamil") {
+      processedQuery = await translateText(message, "tamil", "english");
+    }
+    
+    // Get response from ChatPDF
+    const response = await sendMessageToChatPdf(sourceId, processedQuery);
+    
+    // Translate the response back to Tamil if needed
+    if (language === "tamil") {
+      return translateText(response, "english", "tamil");
+    }
+    
     return response;
   } catch (error) {
     console.error("Error sending message to analyzer:", error);
-    return "Sorry, I encountered an error while processing your insurance policy. Please try again.";
+    const errorMsg = "Sorry, I encountered an error while processing your insurance policy. Please try again.";
+    return language === "tamil" ? await translateText(errorMsg, "english", "tamil") : errorMsg;
   }
 }
 
+// Delete a source from ChatPDF API
 export async function deletePdfSource(sourceId: string): Promise<boolean> {
   try {
-    return deleteDocument(sourceId);
+    return deleteChatPdfSource(sourceId);
   } catch (error) {
     console.error("Error deleting PDF source:", error);
     return false;
   }
 }
 
-// Re-export the translateText function from pdfAnalysisService
+// Re-export the translateText function
 export { translateText };
