@@ -1,8 +1,8 @@
 
-import { pdfjs } from 'pdf-lib';
+import * as pdfjsLib from 'pdfjs-dist';
 
 // Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface DocumentChunk {
   text: string;
@@ -28,7 +28,7 @@ const documentStore: Record<string, AnalyzedDocument> = {};
 export async function extractTextFromPdf(file: File): Promise<string[]> {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pageTexts: string[] = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
