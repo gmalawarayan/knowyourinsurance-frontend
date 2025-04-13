@@ -1,21 +1,25 @@
 
 import React, { useRef, useState, useEffect } from "react";
-import { X, Camera, RotateCcw } from "lucide-react";
+import { X, Camera, RotateCcw, Plus, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface PhotoCaptureProps {
   onCapture: (photoBlob: Blob) => void;
   onClose: () => void;
+  currentPageCount: number;
+  maxPages: number;
 }
 
-const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
+const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, currentPageCount, maxPages }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [photoTaken, setPhotoTaken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
+
+  const remainingPages = maxPages - currentPageCount;
 
   useEffect(() => {
     const startCamera = async () => {
@@ -55,6 +59,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
   };
 
   const takePhoto = () => {
+    if (currentPageCount >= maxPages) {
+      toast.error(`You've reached the maximum limit of ${maxPages} pages.`);
+      return;
+    }
+
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -81,7 +90,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
     if (canvasRef.current) {
       canvasRef.current.toBlob((blob) => {
         if (blob) {
-          toast.info("Processing photo...");
+          toast.info(`Processing page ${currentPageCount + 1}...`);
           onCapture(blob);
         }
       }, 'image/jpeg', 0.95);
@@ -92,7 +101,12 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
       <div className="relative w-full max-w-lg bg-background border rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-semibold">Take Photo of Document</h2>
+          <div>
+            <h2 className="text-xl font-semibold">Take Photo of Document</h2>
+            <p className="text-sm text-muted-foreground">
+              Page {currentPageCount + 1} of max {maxPages} • {remainingPages} remaining
+            </p>
+          </div>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -139,8 +153,9 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
           {!photoTaken ? (
             <Button 
               onClick={takePhoto}
-              disabled={!!error}
-              className="rounded-full w-16 h-16 bg-primary hover:bg-primary/90"
+              disabled={!!error || currentPageCount >= maxPages}
+              className={`rounded-full w-16 h-16 ${currentPageCount >= maxPages ? 'bg-muted text-muted-foreground' : 'bg-primary hover:bg-primary/90'}`}
+              title={currentPageCount >= maxPages ? `Maximum ${maxPages} pages reached` : "Take photo"}
             >
               <Camera className="h-6 w-6" />
             </Button>
@@ -158,7 +173,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
                 onClick={confirmPhoto}
                 className="flex items-center gap-2"
               >
-                Use Photo
+                {currentPageCount + 1 >= maxPages ? "Finish" : "Add Page"}
+                {currentPageCount + 1 < maxPages && <Plus className="h-4 w-4 ml-1" />}
               </Button>
             </>
           )}
@@ -166,6 +182,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
         
         <div className="p-4 bg-muted text-xs text-muted-foreground">
           <p>Position the document in good lighting with all corners visible for best results.</p>
+          <p className="mt-1">You may capture up to {maxPages} pages of your policy document.</p>
         </div>
       </div>
     </div>

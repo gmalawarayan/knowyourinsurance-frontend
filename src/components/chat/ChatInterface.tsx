@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, X, FileText, Camera, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,6 +95,9 @@ const ChatInterface: React.FC = () => {
   const [isPdfMode, setIsPdfMode] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [language, setLanguage] = useState<Language>("english");
+  const [capturedPhotos, setCapturedPhotos] = useState<Blob[]>([]);
+  const [isCapturingMultiplePhotos, setIsCapturingMultiplePhotos] = useState(false);
+  const MAX_POLICY_PAGES = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -254,19 +256,82 @@ const ChatInterface: React.FC = () => {
 
   const handlePhotoCapture = async (photoBlob: Blob) => {
     try {
-      setShowPhotoCapture(false);
-      setIsAnalyzing(true);
-      toast.info("Converting photo to PDF...");
+      const newPhotos = [...capturedPhotos, photoBlob];
+      setCapturedPhotos(newPhotos);
       
-      const photoFile = new File([photoBlob], "document_photo.jpg", { type: "image/jpeg" });
-      const pdfBlob = await convertImageToPdf(photoFile);
-      const pdfFile = new File([pdfBlob], "converted_document.pdf", { type: "application/pdf" });
-      
-      setSelectedFile(pdfFile);
+      if (newPhotos.length >= MAX_POLICY_PAGES) {
+        setShowPhotoCapture(false);
+        setIsCapturingMultiplePhotos(true);
+        await combinePhotosIntoPdf(newPhotos);
+      } else {
+        setPhotoTaken(false);
+      }
     } catch (error) {
       console.error("Error processing photo:", error);
       toast.error("Failed to process photo. Please try again.");
+    }
+  };
+  
+  const combinePhotosIntoPdf = async (photos: Blob[]) => {
+    try {
+      setIsAnalyzing(true);
+      toast.info(`Converting ${photos.length} photos to PDF...`);
+      
+      const pdf = new jsPDF();
+      
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const photoUrl = URL.createObjectURL(photo);
+        
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = photoUrl;
+        });
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        
+        const imgWidth = img.width;
+        const imgHeight = img.height;
+        
+        const scaleFactor = Math.min(
+          pageWidth / imgWidth,
+          pageHeight / imgHeight
+        ) * 0.9;
+        
+        const scaledWidth = imgWidth * scaleFactor;
+        const scaledHeight = imgHeight * scaleFactor;
+        
+        const x = (pageWidth - scaledWidth) / 2;
+        const y = (pageHeight - scaledHeight) / 2;
+        
+        pdf.addImage(photoUrl, 'JPEG', x, y, scaledWidth, scaledHeight);
+        
+        URL.revokeObjectURL(photoUrl);
+      }
+      
+      const pdfBlob = pdf.output('blob');
+      
+      const pdfFile = new File([pdfBlob], "policy_document.pdf", { type: "application/pdf" });
+      
+      setCapturedPhotos([]);
+      setIsCapturingMultiplePhotos(false);
+      
+      setSelectedFile(pdfFile);
+      
+      toast.success(`Successfully created PDF with ${photos.length} pages.`);
+    } catch (error) {
+      console.error("Error combining photos:", error);
+      toast.error("Failed to combine photos into PDF. Please try again.");
       setIsAnalyzing(false);
+      setIsCapturingMultiplePhotos(false);
+      setCapturedPhotos([]);
     }
   };
   
@@ -633,7 +698,14 @@ const ChatInterface: React.FC = () => {
       {showPhotoCapture && (
         <PhotoCapture 
           onCapture={handlePhotoCapture} 
-          onClose={() => setShowPhotoCapture(false)} 
+          onClose={() => {
+            setShowPhotoCapture(false);
+            if (capturedPhotos.length > 0) {
+              combinePhotosIntoPdf(capturedPhotos);
+            }
+          }}
+          currentPageCount={capturedPhotos.length}
+          maxPages={MAX_POLICY_PAGES}
         />
       )}
     </div>
