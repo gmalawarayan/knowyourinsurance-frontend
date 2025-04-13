@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -47,17 +48,26 @@ const Contact = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real implementation, this would save to Supabase
-      // For now, we'll simulate saving the data
-      console.log("Saving user info:", values);
+      // Save to Supabase
+      const { error } = await supabase
+        .from('contacts')
+        .insert([
+          { 
+            first_name: values.firstName, 
+            last_name: values.lastName, 
+            email: values.email,
+            created_at: new Date().toISOString()
+          }
+        ]);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (error) {
+        throw error;
+      }
       
       toast.success("Thank you for contacting us! We'll get back to you soon.");
       navigate("/");
     } catch (error) {
-      console.error("Error saving user info:", error);
+      console.error("Error saving contact info:", error);
       toast.error("Failed to submit your information. Please try again.");
     } finally {
       setIsSubmitting(false);
