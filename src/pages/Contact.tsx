@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { supabase, checkSupabaseConnection } from "@/lib/supabase";
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -34,6 +33,16 @@ const formSchema = z.object({
 const Contact = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
+
+  useEffect(() => {
+    checkSupabaseConnection().then(connected => {
+      setIsSupabaseConnected(connected);
+      if (!connected) {
+        console.warn('Supabase connection not available. Contact form will save data locally.');
+      }
+    });
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,20 +57,26 @@ const Contact = () => {
     setIsSubmitting(true);
     
     try {
-      // Save to Supabase
-      const { error } = await supabase
-        .from('contacts')
-        .insert([
-          { 
-            first_name: values.firstName, 
-            last_name: values.lastName, 
-            email: values.email,
-            created_at: new Date().toISOString()
-          }
-        ]);
-      
-      if (error) {
-        throw error;
+      const contactData = { 
+        first_name: values.firstName, 
+        last_name: values.lastName, 
+        email: values.email,
+        created_at: new Date().toISOString()
+      };
+
+      if (isSupabaseConnected) {
+        const { error } = await supabase
+          .from('contacts')
+          .insert([contactData]);
+        
+        if (error) {
+          throw error;
+        }
+      } else {
+        const savedContacts = JSON.parse(localStorage.getItem('contacts') || '[]');
+        savedContacts.push(contactData);
+        localStorage.setItem('contacts', JSON.stringify(savedContacts));
+        console.log('Contact saved to local storage:', contactData);
       }
       
       toast.success("Thank you for contacting us! We'll get back to you soon.");

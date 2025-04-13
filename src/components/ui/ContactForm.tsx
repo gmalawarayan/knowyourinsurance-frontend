@@ -1,19 +1,30 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { supabase, checkSupabaseConnection } from "@/lib/supabase";
 
 const ContactForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     message: "",
   });
+
+  // Check Supabase connection on component mount
+  useEffect(() => {
+    checkSupabaseConnection().then(connected => {
+      setIsSupabaseConnected(connected);
+      if (!connected) {
+        console.warn('Supabase connection not available. Contact form will save data locally.');
+      }
+    });
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -32,21 +43,30 @@ const ContactForm: React.FC = () => {
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Save to Supabase
-      const { error } = await supabase
-        .from('contacts')
-        .insert([
-          { 
-            first_name: firstName,
-            last_name: lastName,
-            email: formData.email,
-            message: formData.message,
-            created_at: new Date().toISOString()
-          }
-        ]);
+      // Create contact data object
+      const contactData = { 
+        first_name: firstName,
+        last_name: lastName,
+        email: formData.email,
+        message: formData.message,
+        created_at: new Date().toISOString()
+      };
 
-      if (error) {
-        throw error;
+      if (isSupabaseConnected) {
+        // Save to Supabase if connected
+        const { error } = await supabase
+          .from('contacts')
+          .insert([contactData]);
+
+        if (error) {
+          throw error;
+        }
+      } else {
+        // Fallback to local storage if Supabase is not connected
+        const savedContacts = JSON.parse(localStorage.getItem('contacts') || '[]');
+        savedContacts.push(contactData);
+        localStorage.setItem('contacts', JSON.stringify(savedContacts));
+        console.log('Contact saved to local storage:', contactData);
       }
 
       toast.success("Message sent! We'll get back to you as soon as possible.");
