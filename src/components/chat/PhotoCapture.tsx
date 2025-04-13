@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { X, Camera, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface PhotoCaptureProps {
   onCapture: (photoBlob: Blob) => void;
@@ -14,12 +15,18 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [photoTaken, setPhotoTaken] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
 
   useEffect(() => {
     const startCamera = async () => {
       try {
+        // Stop any existing stream
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: { facingMode: cameraFacingMode },
           audio: false,
         });
         
@@ -41,7 +48,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [cameraFacingMode]);
+
+  const switchCamera = () => {
+    setCameraFacingMode(prev => prev === "environment" ? "user" : "environment");
+  };
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -70,6 +81,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
     if (canvasRef.current) {
       canvasRef.current.toBlob((blob) => {
         if (blob) {
+          toast.info("Processing photo...");
           onCapture(blob);
         }
       }, 'image/jpeg', 0.95);
@@ -109,6 +121,16 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose }) => {
                 ref={canvasRef} 
                 className={`w-full ${photoTaken ? "block" : "hidden"}`}
               />
+              {!photoTaken && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={switchCamera}
+                  className="absolute top-2 right-2 bg-background/50 hover:bg-background/80"
+                >
+                  Switch Camera
+                </Button>
+              )}
             </>
           )}
         </div>
