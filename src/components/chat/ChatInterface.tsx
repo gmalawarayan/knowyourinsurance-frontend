@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, X, FileText, Camera, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -98,6 +97,35 @@ const ChatInterface: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const insuranceTrivia = [
+    "The concept of insurance dates back to ancient Babylonian times, around 1750 BC, where merchants would pay a premium to lenders to guarantee their shipments.",
+    "The first life insurance policies were taken out in the early 18th century at Lloyd's Coffee House in London, which later became Lloyd's of London.",
+    "In the U.S., Benjamin Franklin helped establish the first insurance company in 1752, the Philadelphia Contributionship for the Insurance of Houses from Loss by Fire.",
+    "The term 'deductible' refers to the amount you pay out of pocket before your insurance starts covering costs.",
+    "The largest insurance market in the world is in London, known as Lloyd's of London.",
+    "Insurance fraud costs the industry billions of dollars annually, which ultimately increases premiums for all policyholders.",
+    "Comprehensive auto insurance typically covers damage not caused by a collision, such as theft, vandalism, or natural disasters.",
+    "The insurance industry employs over 2.8 million people in the United States alone.",
+    "Actuaries are professionals who analyze statistical data to calculate insurance risks and premiums.",
+    "The term 'umbrella insurance' refers to liability insurance that provides additional coverage beyond your existing policies.",
+    "Some of the most expensive insurance policies in the world are those covering celebrity body parts, like Jennifer Lopez's legs for $27 million.",
+    "The first health insurance plan in the United States was created in 1929 when a group of teachers contracted with Baylor Hospital for room, board, and medical services.",
+    "Insurance companies use a credit-based insurance score to determine premiums in many states, as statistics show that people with poor credit file more claims.",
+    "Flood damage is typically not covered by standard homeowners insurance policies in the United States.",
+    "The insurance industry is one of the largest investors in the global financial markets."
+  ];
+
+  const getRandomTrivia = () => {
+    return insuranceTrivia[Math.floor(Math.random() * insuranceTrivia.length)];
+  };
+
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -168,7 +196,6 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Set default user if none exists
       if (!getCurrentUser()) {
         const user = setUserInfo("User", "user@example.com");
         trackUniqueUser(user.id);
@@ -229,13 +256,11 @@ const ChatInterface: React.FC = () => {
       setIsAnalyzing(true);
       toast.info("Converting photo to PDF...");
       
-      // Convert the image to PDF 
       const photoFile = new File([photoBlob], "document_photo.jpg", { type: "image/jpeg" });
       const pdfBlob = await convertImageToPdf(photoFile);
       const pdfFile = new File([pdfBlob], "converted_document.pdf", { type: "application/pdf" });
       
       setSelectedFile(pdfFile);
-      // The existing useEffect will trigger processPdfFile since it's a PDF
     } catch (error) {
       console.error("Error processing photo:", error);
       toast.error("Failed to process photo. Please try again.");
@@ -250,22 +275,18 @@ const ChatInterface: React.FC = () => {
         try {
           const canvas = document.createElement('canvas');
           
-          // Set the canvas dimensions to match the image with padding
-          const padding = 50; // padding in pixels
+          const padding = 50;
           canvas.width = img.width + (padding * 2);
           canvas.height = img.height + (padding * 2);
           
           const ctx = canvas.getContext('2d');
           if (!ctx) throw new Error("Could not get canvas context");
           
-          // Fill with white background
           ctx.fillStyle = 'white';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
-          // Draw the image with padding
           ctx.drawImage(img, padding, padding, img.width, img.height);
           
-          // Convert to PDF using canvas.toBlob
           canvas.toBlob((blob) => {
             if (blob) {
               resolve(blob);
@@ -290,12 +311,20 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     setTimeout(async () => {
-      let responseText = `I received your message: "${userMessage}"`;
-      if (selectedFile && !isPdfMode) {
-        responseText += ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}`;
+      let responseText = "";
+      
+      if (!isPdfMode) {
+        const greeting = getTimeBasedGreeting();
+        const trivia = getRandomTrivia();
+        
+        responseText = `${greeting}! ${trivia}\n\nTo get the most out of our service, please upload your insurance policy document, and I'll be able to analyze it for you.`;
+      } else {
+        responseText = `I received your message: "${userMessage}"`;
+        if (selectedFile && !isPdfMode) {
+          responseText += ` and your ${selectedFile.type.startsWith("image/") ? "image" : "file"}: ${selectedFile.name}`;
+        }
       }
       
-      // Translate the response if Tamil is selected
       if (language === "tamil") {
         responseText = await translateText(responseText, "english", "tamil");
       }
@@ -319,7 +348,6 @@ const ChatInterface: React.FC = () => {
     }
     
     if (isPdfMode && activePdfSource) {
-      // Ensure we have a default user set
       if (!getCurrentUser()) {
         const user = setUserInfo("User", "user@example.com");
         trackUniqueUser(user.id);

@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { Menu, Plus, UserCircle2, FileText, BarChart2, LogOut } from "lucide-react";
+import { Menu, Plus, UserCircle2, FileText, BarChart2, LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -8,7 +7,7 @@ import { clearUserInfo, getCurrentUser, isAuthenticated, isAdminAuthenticated } 
 import { trackUniqueUser, isAdmin } from "@/services/analyticsService";
 import { toast } from "sonner";
 import UsageMetricsDialog from "@/components/analytics/UsageMetricsDialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 interface ChatLayoutProps {
   children: React.ReactNode;
@@ -26,9 +25,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   };
 
   const handleNewChat = () => {
-    // Clear the chat messages in the main area
     setMessages([]);
-    // Dispatch a custom event that the ChatInterface can listen for
     window.dispatchEvent(new CustomEvent('new-chat'));
   };
 
@@ -50,12 +47,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
     }
   };
 
-  // Check if user is admin
   const userIsAdmin = isAdmin(user) || isAdminAuthenticated();
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Mobile menu button */}
       <Button
         variant="ghost"
         size="icon"
@@ -66,7 +61,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300 ease-in-out"
@@ -74,7 +68,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
         />
       )}
 
-      {/* Sidebar */}
       <aside 
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-[20%] min-w-64 bg-[#F5F5F5] border-r border-border transition-transform duration-300 ease-in-out shadow-md",
@@ -86,7 +79,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <FileText size={20} className="text-purple-600" />
-              <span className="font-semibold text-lg">AnalyzeYourInsurancePolicy</span>
+              <Link to="/" className="font-semibold text-lg flex items-center hover:text-purple-700 transition-colors">
+                AnalyzeYourInsurancePolicy
+                <ExternalLink size={16} className="ml-1" />
+              </Link>
             </div>
           </div>
           
@@ -123,17 +119,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </>
             )}
             
-            {/* Analytics button now directly opens the metrics dialog */}
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
-              onClick={handleViewMetrics}
-            >
-              <BarChart2 size={18} />
-              <span>Quick Analytics</span>
-            </Button>
+            {userIsAdmin && (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
+                onClick={handleViewMetrics}
+              >
+                <BarChart2 size={18} />
+                <span>Quick Analytics</span>
+              </Button>
+            )}
             
-            {/* Admin Dashboard button */}
             <Button 
               variant="outline" 
               className="w-full justify-start gap-2 border-gray-300 shadow-sm hover:bg-muted scale-up-button"
@@ -146,8 +142,28 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           
           <Separator className="my-4" />
           
+          <div className="mt-2 overflow-y-auto">
+            <h3 className="font-medium text-sm text-muted-foreground mb-2">Other Users Also Asked</h3>
+            <ul className="space-y-2 text-sm">
+              <li className="p-2 bg-muted/50 rounded-md hover:bg-muted cursor-pointer">
+                What does my deductible cover?
+              </li>
+              <li className="p-2 bg-muted/50 rounded-md hover:bg-muted cursor-pointer">
+                Are pre-existing conditions covered?
+              </li>
+              <li className="p-2 bg-muted/50 rounded-md hover:bg-muted cursor-pointer">
+                How do I file a claim for property damage?
+              </li>
+              <li className="p-2 bg-muted/50 rounded-md hover:bg-muted cursor-pointer">
+                What's my coverage limit for medical expenses?
+              </li>
+              <li className="p-2 bg-muted/50 rounded-md hover:bg-muted cursor-pointer">
+                Is rental car coverage included in my policy?
+              </li>
+            </ul>
+          </div>
+          
           <div className="flex-grow mt-2 overflow-y-auto">
-            {/* Chat history or other sidebar content can go here */}
             <div className="py-3 px-2 text-sm text-muted-foreground">
               <p className="font-medium text-foreground mb-2">About AnalyzeYourInsurancePolicy</p>
               <ul className="space-y-2">
@@ -166,10 +182,18 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
               </ul>
             </div>
           </div>
+          
+          <div className="mt-auto pt-4">
+            <Link 
+              to="/contact" 
+              className="flex items-center justify-center py-2 px-4 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+            >
+              Get in Touch
+            </Link>
+          </div>
         </div>
       </aside>
 
-      {/* Main content */}
       <main 
         className={cn(
           "flex-1 ml-0 md:ml-[20%] transition-all duration-300",
@@ -179,7 +203,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
         {children}
       </main>
       
-      {/* Analytics Dialog - will only be shown if metrics open is true */}
       <UsageMetricsDialog open={metricsOpen} onOpenChange={setMetricsOpen} />
     </div>
   );
