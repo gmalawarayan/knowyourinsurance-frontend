@@ -1,12 +1,13 @@
 
-import { createRoot } from 'react-dom/client'
-import { Analytics } from '@vercel/analytics/react';
-import App from './App.tsx'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
 import './index.css'
 
-createRoot(document.getElementById("root")!).render(
-  <>
+console.log('Application starting, version:', import.meta.env.VITE_APP_VERSION || 'development')
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
     <App />
-    <Analytics />
-  </>
-);
+  </React.StrictMode>,
+)
