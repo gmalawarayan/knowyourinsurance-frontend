@@ -120,6 +120,7 @@ const ChatInterface: React.FC = () => {
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const MAX_POLICY_PAGES = 10;
+  const MAX_QUESTIONS = 3;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -434,6 +435,47 @@ const ChatInterface: React.FC = () => {
       setMessages(prevMessages => [...prevMessages, aiResponse]);
       setIsTyping(false);
     }, 1500);
+  };
+
+  const handleContinueResponse = (continueChat: boolean) => {
+    setShowContinueDialog(false);
+    
+    if (continueChat) {
+      // Reset question count to allow for more questions
+      setQuestionCount(0);
+      toast.success(language === "english" 
+        ? "You can continue asking questions about your policy." 
+        : "நீங்கள் உங்கள் பாலிசி பற்றி மேலும் கேள்விகளைக் கேட்கலாம்.");
+    } else {
+      // User doesn't want to continue, show delete confirmation
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteDialog(false);
+    
+    if (activePdfSource) {
+      deletePdfSource(activePdfSource.sourceId)
+        .then(() => {
+          toast.success(language === "english" 
+            ? "Your policy document has been deleted." 
+            : "உங்கள் பாலிசி ஆவணம் நீக்கப்பட்டது.");
+          
+          // Reset the chat state
+          setMessages([]);
+          setMessage("");
+          setSelectedFile(null);
+          setActivePdfSource(null);
+          setIsPdfMode(false);
+          setQuestionCount(0);
+        })
+        .catch(() => {
+          toast.error(language === "english" 
+            ? "Failed to delete your policy document." 
+            : "உங்கள் பாலிசி ஆவணத்தை நீக்க முடியவில்லை.");
+        });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -774,7 +816,7 @@ const ChatInterface: React.FC = () => {
             <AlertDialogDescription>
               {language === "english"
                 ? "Are you sure you want to delete your policy document? This action cannot be undone."
-                : "உங்கள் பாலிசி ஆவணத்தை நீக்க விரும்புகிறீர்களா? இந��த செயலை மீட்டெடுக்க முடியாது."}
+                : "உங்கள் பாலிசி ஆவணத்தை நீக்க விரும்புகிறீர்களா? இந்த செயலை மீட்டெடுக்க முடியாது."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
