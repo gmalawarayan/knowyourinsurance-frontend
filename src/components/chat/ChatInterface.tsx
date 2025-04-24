@@ -441,13 +441,11 @@ const ChatInterface: React.FC = () => {
     setShowContinueDialog(false);
     
     if (continueChat) {
-      // Reset question count to allow for more questions
       setQuestionCount(0);
       toast.success(language === "english" 
         ? "You can continue asking questions about your policy." 
         : "நீங்கள் உங்கள் பாலிசி பற்றி மேலும் கேள்விகளைக் கேட்கலாம்.");
     } else {
-      // User doesn't want to continue, show delete confirmation
       setShowDeleteDialog(true);
     }
   };
@@ -462,13 +460,14 @@ const ChatInterface: React.FC = () => {
             ? "Your policy document has been deleted." 
             : "உங்கள் பாலிசி ஆவணம் நீக்கப்பட்டது.");
           
-          // Reset the chat state
           setMessages([]);
           setMessage("");
           setSelectedFile(null);
           setActivePdfSource(null);
           setIsPdfMode(false);
           setQuestionCount(0);
+          
+          window.dispatchEvent(new Event('new-chat'));
         })
         .catch(() => {
           toast.error(language === "english" 
@@ -688,7 +687,7 @@ const ChatInterface: React.FC = () => {
                 placeholder={isPdfMode 
                   ? language === "english" 
                     ? "Ask a question about your insurance policy..." 
-                    : "உங்கள் காப்பீட்டுக் கொள்கை பற்றிய கேள்வியைக் கேளுங்கள்..."
+                    : "உங்கள் காப்பீட்டுக் கொள்கை பற்றிய கேள்வியைக் கேட்கலாம்..."
                   : language === "english"
                     ? "Type your message here..."
                     : "உங்கள் செய்தியை இங்கே தட்டச்சு செய்யவும்..."}
@@ -816,7 +815,7 @@ const ChatInterface: React.FC = () => {
             <AlertDialogDescription>
               {language === "english"
                 ? "Are you sure you want to delete your policy document? This action cannot be undone."
-                : "உங்கள் பாலிசி ஆவணத்தை நீக்க விரும்புகிறீர்களா? இந்த செயலை மீட்டெடுக்க முடியாது."}
+                : "உங்கள் பாலிசி ஆவணத்தை நீக்க விரும்புகிறீர்களா? இந்த செயலை மீட்டெடுக்க முடியவில்லை."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
