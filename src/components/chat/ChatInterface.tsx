@@ -22,6 +22,25 @@ import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource, translateT
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import PhotoCapture from "./PhotoCapture";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -97,6 +116,9 @@ const ChatInterface: React.FC = () => {
   const [language, setLanguage] = useState<Language>("english");
   const [capturedPhotos, setCapturedPhotos] = useState<Blob[]>([]);
   const [isCapturingMultiplePhotos, setIsCapturingMultiplePhotos] = useState(false);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const MAX_POLICY_PAGES = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -229,6 +251,10 @@ const ChatInterface: React.FC = () => {
         
         setMessages(prev => [...prev, newUserMessage]);
         setMessage("");
+        
+        if (isPdfMode) {
+          setQuestionCount(prev => prev + 1);
+        }
       }
       
       trackQueryAsked();
@@ -243,6 +269,11 @@ const ChatInterface: React.FC = () => {
       };
       
       setMessages(prev => [...prev, aiResponse]);
+
+      if (isPdfMode && questionCount + 1 >= MAX_QUESTIONS) {
+        setShowContinueDialog(true);
+      }
+
       return response;
     } catch (error) {
       console.error("Error getting response from analyzer:", error);
@@ -263,8 +294,6 @@ const ChatInterface: React.FC = () => {
         setShowPhotoCapture(false);
         setIsCapturingMultiplePhotos(true);
         await combinePhotosIntoPdf(newPhotos);
-      } else {
-        setPhotoTaken(false);
       }
     } catch (error) {
       console.error("Error processing photo:", error);
@@ -708,6 +737,56 @@ const ChatInterface: React.FC = () => {
           maxPages={MAX_POLICY_PAGES}
         />
       )}
+
+      <Dialog open={showContinueDialog} onOpenChange={setShowContinueDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {language === "english" 
+                ? "Do you have more questions?"
+                : "உங்களுக்கு மேலும் கேள்விகள் உள்ளனவா?"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "english"
+                ? "You've asked 3 questions about your policy. Would you like to continue asking more questions?"
+                : "உங்கள் பாலிசி பற்றி 3 கேள்விகளை கேட்டுள்ளீர்கள். மேலும் கேள்விகள் கேட்க விரும்புகிறீர்களா?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleContinueResponse(false)}>
+              {language === "english" ? "No, I'm done" : "இல்லை, முடிந்தது"}
+            </Button>
+            <Button onClick={() => handleContinueResponse(true)}>
+              {language === "english" ? "Yes, continue" : "ஆம், தொடரவும்"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "english"
+                ? "Delete Policy Document"
+                : "பாலிசி ஆவணத்தை நீக்கவும்"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "english"
+                ? "Are you sure you want to delete your policy document? This action cannot be undone."
+                : "உங்கள் பாலிசி ஆவணத்தை நீக்க விரும்புகிறீர்களா? இந��த செயலை மீட்டெடுக்க முடியாது."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {language === "english" ? "Cancel" : "ரத்து செய்"}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              {language === "english" ? "Delete" : "நீக்கு"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
