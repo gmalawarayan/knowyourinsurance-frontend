@@ -1,6 +1,7 @@
 
 // AnalyzeYourInsurancePolicy API service
 // API Key: sec_EvOyQVA4IfSmWsdU3EZufWHAhgUEN2WS
+import { preprocessDocument } from './documentProcessingService';
 
 interface InsurancePolicySource {
   sourceId: string;
@@ -9,8 +10,11 @@ interface InsurancePolicySource {
 
 export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySource | undefined> {
   try {
+    // Process document locally if enabled
+    const processedFile = await preprocessDocument(file);
+    
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", processedFile);
     
     const response = await fetch("https://api.chatpdf.com/v1/sources/add-file", {
       method: "POST",
