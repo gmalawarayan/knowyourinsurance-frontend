@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,25 +20,68 @@ interface PaymentModalProps {
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const paypalButtonRef = useRef<HTMLDivElement>(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
 
-  const handlePayment = () => {
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      setIsProcessing(false);
+  useEffect(() => {
+    // Load the PayPal SDK script when the component mounts
+    if (isOpen && !paypalLoaded) {
+      const script = document.createElement('script');
+      script.src = "https://www.paypal.com/sdk/js?client-id=sb&currency=USD";
+      script.async = true;
+      script.onload = () => {
+        setPaypalLoaded(true);
+      };
       
-      // Save payment status to localStorage
-      localStorage.setItem("policyAnalyzer_isPaid", "true");
+      document.body.appendChild(script);
       
-      // Show success message
-      toast.success("Payment successful! You now have unlimited questions.");
+      return () => {
+        // Clean up the script when the component unmounts
+        document.body.removeChild(script);
+      };
+    }
+  }, [isOpen, paypalLoaded]);
+
+  useEffect(() => {
+    // Initialize PayPal buttons when the SDK is loaded
+    if (paypalLoaded && paypalButtonRef.current && isOpen) {
+      paypalButtonRef.current.innerHTML = '';
       
-      // Notify parent component
-      onPaymentSuccess();
-      onClose();
-    }, 2000);
-  };
+      // @ts-ignore - PayPal global object
+      window.paypal.Buttons({
+        createOrder: (data: any, actions: any) => {
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: '1.00'
+              }
+            }]
+          });
+        },
+        onApprove: (data: any, actions: any) => {
+          setIsProcessing(true);
+          
+          return actions.order.capture().then(function(details: any) {
+            // Save payment status to localStorage
+            localStorage.setItem("policyAnalyzer_isPaid", "true");
+            
+            // Show success message
+            toast.success(`Payment successful! Thanks, ${details.payer.name.given_name}. You now have unlimited questions.`);
+            
+            setIsProcessing(false);
+            // Notify parent component
+            onPaymentSuccess();
+            onClose();
+          });
+        },
+        onError: (err: any) => {
+          setIsProcessing(false);
+          toast.error("Payment failed. Please try again.");
+          console.error("PayPal error:", err);
+        }
+      }).render(paypalButtonRef.current);
+    }
+  }, [paypalLoaded, isOpen, onPaymentSuccess, onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -71,23 +114,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
           </ul>
         </div>
         
+        {/* PayPal Button Container */}
+        <div 
+          ref={paypalButtonRef} 
+          className="mt-4 mb-2"
+          style={{ minHeight: '45px' }}
+        >
+          {!paypalLoaded && (
+            <div className="w-full h-10 bg-gray-200 animate-pulse rounded flex items-center justify-center text-gray-500">
+              Loading payment options...
+            </div>
+          )}
+        </div>
+        
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>
             Maybe later
-          </Button>
-          <Button 
-            onClick={handlePayment}
-            className="flex items-center gap-2"
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                Processing...
-              </>
-            ) : (
-              <>Pay $1 for Unlimited Access</>
-            )}
           </Button>
         </DialogFooter>
       </DialogContent>
