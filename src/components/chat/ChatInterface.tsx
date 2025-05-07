@@ -22,6 +22,7 @@ import { uploadPdfToAnalyzer, sendMessageToAnalyzer, deletePdfSource, translateT
 import { trackPdfUpload, trackQueryAsked, trackUniqueUser } from "@/services/analyticsService";
 import { setUserInfo, getCurrentUser } from "@/services/authService";
 import PhotoCapture from "./PhotoCapture";
+import PaymentModal from "./PaymentModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,14 +117,19 @@ const ChatInterface: React.FC = () => {
   const [language, setLanguage] = useState<Language>("english");
   const [capturedPhotos, setCapturedPhotos] = useState<Blob[]>([]);
   const [isCapturingMultiplePhotos, setIsCapturingMultiplePhotos] = useState(false);
-  const [questionCount, setQuestionCount] = useState(0);
-  const [showContinueDialog, setShowContinueDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [questionCount, setQuestionCount] = useState(() => {
+    return parseInt(localStorage.getItem("policyAnalyzer_questionCount") || "0");
+  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isPaid, setIsPaid] = useState(() => {
+    return localStorage.getItem("policyAnalyzer_isPaid") === "true";
+  });
   const MAX_POLICY_PAGES = 10;
   const MAX_QUESTIONS = 3;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const MAX_FREE_QUESTIONS = 3;
+  
   const insuranceTrivia = [
     "The concept of insurance dates back to ancient Babylonian times, around 1750 BC, where merchants would pay a premium to lenders to guarantee their shipments.",
     "The first life insurance policies were taken out in the early 18th century at Lloyd's Coffee House in London, which later became Lloyd's of London.",
@@ -254,7 +260,27 @@ const ChatInterface: React.FC = () => {
         setMessage("");
         
         if (isPdfMode) {
-          setQuestionCount(prev => prev + 1);
+          // Update question count if we're in PDF mode and it's a user question
+          const newCount = questionCount + 1;
+          setQuestionCount(newCount);
+          localStorage.setItem("policyAnalyzer_questionCount", newCount.toString());
+          
+          // Check if user needs to pay
+          if (newCount > MAX_FREE_QUESTIONS && !isPaid) {
+            const paymentPrompt: Message = {
+              id: Date.now().toString(),
+              content: language === "english" 
+                ? "You've used all your free questions. Please upgrade to continue asking questions." 
+                : "நீங்கள் உங்கள் அனைத்து இலவச கேள்விகளையும் பயன்படுத்தியுள்ளீர்கள். தொடர்ந்து கேள்விகளைக் கேட்க தயவுசெய்து மேம்படுத்தவும்.",
+              sender: "ai",
+              timestamp: new Date(),
+            };
+            
+            setMessages(prev => [...prev, paymentPrompt]);
+            setShowPaymentModal(true);
+            setIsTyping(false);
+            return undefined;
+          }
         }
       }
       
@@ -271,7 +297,7 @@ const ChatInterface: React.FC = () => {
       
       setMessages(prev => [...prev, aiResponse]);
 
-      if (isPdfMode && questionCount + 1 >= MAX_QUESTIONS) {
+      if (isPdfMode && questionCount >= MAX_QUESTIONS) {
         setShowContinueDialog(true);
       }
 
@@ -572,6 +598,20 @@ const ChatInterface: React.FC = () => {
               <h1 className="text-3xl font-bold mb-4 text-gradient">Welcome to AnalyzeYourInsurancePolicy</h1>
               <p className="text-muted-foreground mb-6">
                 Upload your insurance policy document or take a photo and ask questions about it.
+                {!isPaid && (
+                  <span className="block mt-2 text-sm font-medium text-primary">
+                    {language === "english" 
+                      ? `You have ${MAX_FREE_QUESTIONS - questionCount} free questions remaining.` 
+                      : `உங்களிடம் ${MAX_FREE_QUESTIONS - questionCount} இலவச கேள்விகள் உள்ளன.`}
+                  </span>
+                )}
+                {isPaid && (
+                  <span className="block mt-2 text-sm font-medium text-green-600">
+                    {language === "english" 
+                      ? "You have unlimited questions access." 
+                      : "உங்களிடம் வரம்பற்ற கேள்விகள் அணுகல் உள்ளது."}
+                  </span>
+                )}
               </p>
               <div className="max-w-md mx-auto bg-muted p-6 rounded-xl shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
@@ -828,6 +868,31 @@ const ChatInterface: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Status Indicator - Shows if user has paid */}
+      {isPaid && isPdfMode && (
+        <div className="bg-green-50 border-t border-green-200 py-1 px-4 text-center text-xs text-green-700">
+          {language === "english" 
+            ? "Unlimited Questions Access Enabled" 
+            : "வரம்பற்ற கேள்விகள் அணுகல் செயல்படுத்தப்பட்டது"}
+        </div>
+      )}
+      
+      {/* Free Questions Counter - Shows when user hasn't paid */}
+      {!isPaid && isPdfMode && (
+        <div className="bg-blue-50 border-t border-blue-200 py-1 px-4 text-center text-xs text-blue-700">
+          {language === "english" 
+            ? `Free Questions: ${questionCount}/${MAX_FREE_QUESTIONS}` 
+            : `இலவச கேள்விகள்: ${questionCount}/${MAX_FREE_QUESTIONS}`}
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 };
