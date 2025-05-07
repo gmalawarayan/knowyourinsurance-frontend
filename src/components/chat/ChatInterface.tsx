@@ -124,6 +124,8 @@ const ChatInterface: React.FC = () => {
   const [isPaid, setIsPaid] = useState(() => {
     return localStorage.getItem("policyAnalyzer_isPaid") === "true";
   });
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const MAX_POLICY_PAGES = 10;
   const MAX_QUESTIONS = 3;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -587,6 +589,15 @@ const ChatInterface: React.FC = () => {
       : "மொழி தமிழாக மாற்றப்பட்டது!"; // "Language changed to Tamil!" in Tamil
       
     toast.success(welcomeMessage);
+  };
+
+  // Handle payment success event
+  const handlePaymentSuccess = () => {
+    setIsPaid(true);
+    setQuestionCount(0);
+    toast.success(language === "english" 
+      ? "You now have unlimited questions access!" 
+      : "உங்களுக்கு இப்போது வரம்பற்ற கேள்விகள் அணுகல் உள்ளது!");
   };
 
   return (
