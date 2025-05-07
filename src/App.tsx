@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import { isAdminAuthenticated } from "./services/authService";
+import GDPRBanner from "./components/privacy/GDPRBanner";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <GDPRBanner />
       </TooltipProvider>
     </LazyMotion>
   </QueryClientProvider>
