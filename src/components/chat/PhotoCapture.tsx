@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from "react";
-import { X, Camera, RotateCcw, Plus, ImageIcon } from "lucide-react";
+import { X, Camera, RotateCcw, Plus, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -97,6 +97,26 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
     }
   };
 
+  const completeCapture = () => {
+    if (currentPageCount === 0) {
+      // If no photos have been captured yet, take the current one first
+      if (canvasRef.current) {
+        canvasRef.current.toBlob((blob) => {
+          if (blob) {
+            toast.info(`Processing page ${currentPageCount + 1}...`);
+            onCapture(blob);
+            // Close after capturing
+            setTimeout(() => onClose(), 500);
+          }
+        }, 'image/jpeg', 0.95);
+      }
+    } else {
+      // If photos have already been captured, simply close
+      toast.success(`Document capture completed with ${currentPageCount} page(s)`);
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
       <div className="relative w-full max-w-lg bg-background border rounded-xl shadow-lg overflow-hidden flex flex-col">
@@ -169,12 +189,22 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
                 <RotateCcw className="h-4 w-4" />
                 Retake
               </Button>
+              
               <Button 
                 onClick={confirmPhoto}
                 className="flex items-center gap-2"
               >
-                {currentPageCount + 1 >= maxPages ? "Finish" : "Add Page"}
+                {currentPageCount + 1 >= maxPages ? "Add Final Page" : "Add Page"}
                 {currentPageCount + 1 < maxPages && <Plus className="h-4 w-4 ml-1" />}
+              </Button>
+              
+              <Button 
+                variant="secondary"
+                onClick={completeCapture}
+                className="flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Complete
               </Button>
             </>
           )}
