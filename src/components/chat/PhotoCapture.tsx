@@ -19,7 +19,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
   const [error, setError] = useState<string | null>(null);
   const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
 
-  const remainingPages = maxPages - currentPageCount;
+  // Remove the hardcoded page limit since we now support unlimited pages
+  const remainingPages = maxPages === Infinity ? "∞" : maxPages - currentPageCount;
 
   useEffect(() => {
     const startCamera = async () => {
@@ -59,11 +60,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
   };
 
   const takePhoto = () => {
-    if (currentPageCount >= maxPages) {
-      toast.error(`You've reached the maximum limit of ${maxPages} pages.`);
-      return;
-    }
-
+    // Remove the check for maximum pages since we now allow unlimited pages
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -124,7 +121,9 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
           <div>
             <h2 className="text-xl font-semibold">Take Photo of Document</h2>
             <p className="text-sm text-muted-foreground">
-              Page {currentPageCount + 1} of max {maxPages} • {remainingPages} remaining
+              {maxPages === Infinity 
+                ? `Page ${currentPageCount + 1} • Unlimited pages` 
+                : `Page ${currentPageCount + 1} of max ${maxPages} • ${remainingPages} remaining`}
             </p>
           </div>
           <Button 
@@ -173,9 +172,9 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
           {!photoTaken ? (
             <Button 
               onClick={takePhoto}
-              disabled={!!error || currentPageCount >= maxPages}
-              className={`rounded-full w-16 h-16 ${currentPageCount >= maxPages ? 'bg-muted text-muted-foreground' : 'bg-primary hover:bg-primary/90'}`}
-              title={currentPageCount >= maxPages ? `Maximum ${maxPages} pages reached` : "Take photo"}
+              disabled={!!error}
+              className="rounded-full w-16 h-16 bg-primary hover:bg-primary/90"
+              title="Take photo"
             >
               <Camera className="h-6 w-6" />
             </Button>
@@ -194,8 +193,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
                 onClick={confirmPhoto}
                 className="flex items-center gap-2"
               >
-                {currentPageCount + 1 >= maxPages ? "Add Final Page" : "Add Page"}
-                {currentPageCount + 1 < maxPages && <Plus className="h-4 w-4 ml-1" />}
+                Add Page
+                <Plus className="h-4 w-4 ml-1" />
               </Button>
               
               <Button 
@@ -212,7 +211,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ onCapture, onClose, current
         
         <div className="p-4 bg-muted text-xs text-muted-foreground">
           <p>Position the document in good lighting with all corners visible for best results.</p>
-          <p className="mt-1">You may capture up to {maxPages} pages of your policy document.</p>
+          <p className="mt-1">
+            {maxPages === Infinity 
+              ? "You can capture an unlimited number of pages of your policy document." 
+              : `You may capture up to ${maxPages} pages of your policy document.`}
+          </p>
         </div>
       </div>
     </div>

@@ -126,7 +126,8 @@ const ChatInterface: React.FC = () => {
   });
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const MAX_POLICY_PAGES = 10;
+  // Changed from 10 to Infinity to allow unlimited pages
+  const MAX_POLICY_PAGES = Infinity;
   const MAX_QUESTIONS = 3;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -586,7 +587,7 @@ const ChatInterface: React.FC = () => {
     
     const welcomeMessage = value === "english" 
       ? "Language changed to English!"
-      : "மொழி தமிழாக மாற்றப்பட்டது!"; // "Language changed to Tamil!" in Tamil
+      : "மொழி தமிழாக மாற்றப்பட்டது!"; // "Language changed to Tamil!"
       
     toast.success(welcomeMessage);
   };
@@ -597,7 +598,7 @@ const ChatInterface: React.FC = () => {
     setQuestionCount(0);
     toast.success(language === "english" 
       ? "You now have unlimited questions access!" 
-      : "உங்களுக்கு இப்போது வரம்பற்ற கேள்விகள் அணுகல் உள்ளது!");
+      : "உங்களிடம் வரம்பற்ற கேள்விகள் அணுகல் உள்ளது!");
   };
 
   return (
