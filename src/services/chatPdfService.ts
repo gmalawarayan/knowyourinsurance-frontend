@@ -15,8 +15,10 @@ export async function uploadPdfToAnalyzer(file: File): Promise<InsurancePolicySo
     
     const formData = new FormData();
     formData.append("file", processedFile);
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
     
-    const response = await fetch("https://api.chatpdf.com/v1/sources/add-file", {
+    const response = await fetch("${API_BASE_URL}/add-file", {
       method: "POST",
       headers: {
         "x-api-key": "sec_EvOyQVA4IfSmWsdU3EZufWHAhgUEN2WS",
@@ -52,7 +54,7 @@ export async function sendMessageToAnalyzer(
       processedMessage = await translateText(message, "tamil", "english");
     }
 
-    const response = await fetch("https://api.chatpdf.com/v1/chats/message", {
+    const response = await fetch("${API_BASE_URL}/chats/message", {
       method: "POST",
       headers: {
         "x-api-key": "sec_EvOyQVA4IfSmWsdU3EZufWHAhgUEN2WS",
@@ -90,7 +92,7 @@ export async function sendMessageToAnalyzer(
 
 export async function deletePdfSource(sourceId: string): Promise<boolean> {
   try {
-    const response = await fetch("https://api.chatpdf.com/v1/sources/delete", {
+    const response = await fetch("${API_BASE_URL}/sources/delete", {
       method: "POST",
       headers: {
         "x-api-key": "sec_EvOyQVA4IfSmWsdU3EZufWHAhgUEN2WS",
